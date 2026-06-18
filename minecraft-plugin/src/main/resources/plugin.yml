@@ -10,3 +10,9 @@ commands:
   disc:
     description: Send message to Discord (partial bridge mode)
     usage: /disc <message>
+  lang:
+    description: Set your chat language
+    usage: /lang <language>
+  translate:
+    description: Toggle auto-translation
+    usage: /translate <on|off>
