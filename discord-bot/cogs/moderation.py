@@ -271,8 +271,7 @@ class Moderation(commands.Cog):
             status = "✅ Active" if pun.get("active") else "❌ Revoked"
             embed.add_field(
                 name=f"{pun.get('type','?').upper()} — {status}",
-                value=f"**Reason:** {pun.get('reason','N/A')}
-**Date:** {str(pun.get('created_at',''))[:10]}",
+                value="**Reason:** " + str(pun.get("reason","N/A")) + "\n**Date:** " + str(pun.get("created_at",""))[:10],
                 inline=False,
             )
         await ctx.followup.send(embed=embed)
