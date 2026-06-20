@@ -40,7 +40,7 @@ async def require_admin_key(
     db: AsyncSession = Depends(get_db),
 ) -> str:
     """Accept X-Admin-Key or Bearer session token (dashboard OAuth)."""
-    if x_admin_key and x_admin_key == settings.secret_key:
+    if x_admin_key and x_admin_key == settings.admin_key:
         return x_admin_key
     if authorization and authorization.startswith("Bearer "):
         token = authorization.removeprefix("Bearer ").strip()
@@ -59,7 +59,7 @@ async def optional_auth(
     Returns auth context without raising. Useful for endpoints that
     behave differently based on auth level.
     """
-    if x_admin_key and x_admin_key == settings.secret_key:
+    if x_admin_key and x_admin_key == settings.admin_key:
         return {"type": "admin", "actor": "dashboard"}
     if x_plugin_key and x_plugin_key == settings.secret_key:
         return {"type": "plugin", "actor": "plugin"}

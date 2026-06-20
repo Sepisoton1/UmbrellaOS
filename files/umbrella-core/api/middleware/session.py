@@ -59,7 +59,7 @@ async def require_admin_key_or_session(
     Dependency: accepts X-Admin-Key (plugin/dashboard bootstrap) or Bearer session token.
     Admin key is checked first; session auth is used when no valid admin key is present.
     """
-    if x_admin_key and x_admin_key == settings.secret_key:
+    if x_admin_key and x_admin_key == settings.admin_key:
         return x_admin_key
 
     if authorization and authorization.startswith("Bearer "):
