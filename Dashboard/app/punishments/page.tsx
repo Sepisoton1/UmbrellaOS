@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { Plus, Search, Ban } from 'lucide-react'
 import { usePunishments, useRevokePunishment } from '@/lib/queries'
+import { NewPunishmentDialog } from '@/components/new-punishment-dialog'
 import { PageHeader } from '@/components/page-header'
 import { GenericStatusBadge, PunishmentTypeBadge } from '@/components/status-badge'
 import { formatDate, formatNumber, timeAgo } from '@/lib/format'
@@ -59,9 +60,7 @@ export default function PunishmentsPage() {
         title="Punishments"
         description="Network-wide moderation actions. Issue, edit and revoke punishments."
       >
-        <Button size="sm">
-          <Plus className="size-4" aria-hidden /> New punishment
-        </Button>
+        <NewPunishmentDialog />
       </PageHeader>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">

@@ -22,6 +22,17 @@ export function usePlayerPunishments(uuid: string) {
     queryFn: () => api.getPlayerPunishments(uuid),
   })
 }
+export function useCreatePunishment() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { player_uuid: string; type: string; reason: string; expires_at?: string }) =>
+      api.createPunishment(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['punishments'] })
+    },
+  })
+}
+
 export function useRevokePunishment() {
   const queryClient = useQueryClient()
   return useMutation({
@@ -90,14 +101,6 @@ export function useServers() {
 }
 export function useAnalytics() {
   return useQuery({ queryKey: ['analytics'], queryFn: api.getServerSummary })
-}
-export function useCreatePunishment() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: (body: { player_uuid: string; type: string; reason: string; expires_at?: string }) =>
-      api.createPunishment(body),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['punishments'] }),
-  })
 }
 export function useSettings() {
   return useQuery({ queryKey: ['settings'], queryFn: api.getSettings, retry: false })
