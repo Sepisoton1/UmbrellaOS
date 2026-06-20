@@ -48,8 +48,10 @@ export function AddStaffDialog() {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) reset() }}>
-      <DialogTrigger asChild>
-        <Button size="sm"><UserPlus className="size-4 mr-1" />Add staff</Button>
+      <DialogTrigger>
+        <button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent hover:text-accent-foreground">
+          <UserPlus className="size-4" />Add staff
+        </button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
