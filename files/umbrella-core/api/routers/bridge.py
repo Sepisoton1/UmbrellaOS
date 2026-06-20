@@ -84,6 +84,9 @@ async def receive_bridge_message(
     # Validate that at least one identifier is provided
     if body.source == "minecraft" and not body.player_uuid:
         raise HTTPException(status_code=400, detail="player_uuid required for minecraft messages")
+    # Treat "server" as a system sender — skip FK constraint by nulling it out
+    if body.player_uuid == "server":
+        body.player_uuid = None
     if body.source == "discord" and not body.discord_id:
         raise HTTPException(status_code=400, detail="discord_id required for discord messages")
 
