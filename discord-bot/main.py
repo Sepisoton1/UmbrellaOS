@@ -32,7 +32,7 @@ async def on_ready():
 
 
 for ext in ("cogs.chat_bridge", "cogs.events", "cogs.ai_alerts", "cogs.ai_config",
-            "cogs.mc_commands", "cogs.announcements"):
+            "cogs.mc_commands", "cogs.announcements", "cogs.moderation"):
     try:
         bot.load_extension(ext)
         print(f"[Discord Bot] Loaded {ext}")
