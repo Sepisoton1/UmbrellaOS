@@ -7,6 +7,8 @@ sleep 2
 
 cd /workspaces/UmbrellaOS/files/umbrella-core
 source venv/bin/activate
+sudo service postgresql start > /dev/null 2>&1
+gh codespace ports visibility 8765:public 3000:public -c $CODESPACE_NAME > /dev/null 2>&1 || true
 python -m uvicorn main:app --host 0.0.0.0 --port 8765 --reload > /tmp/backend.log 2>&1 &
 echo "Waiting for backend..."
 sleep 6
