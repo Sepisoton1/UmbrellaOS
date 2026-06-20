@@ -79,3 +79,46 @@ async def role_member_counts(db: AsyncSession) -> dict[str, int]:
         .group_by(Role.name)
     )
     return {name: count for name, count in rows.all()}
+
+
+async def find_or_add_staff(
+    db: AsyncSession,
+    discord_id: str,
+    role_name: str,
+    *,
+    username: str | None = None,
+) -> dict:
+    """Find an existing user by discord_id, or create one, and set their role directly."""
+    if role_name not in ROLE_LADDER:
+        raise StaffManageError(f"Invalid role '{role_name}'")
+
+    role = await _role_by_name(db, role_name)
+    if role is None:
+        raise StaffManageError(f"Role '{role_name}' not found", 500)
+
+    user = await db.scalar(select(User).where(User.discord_id == discord_id))
+
+    if user is None:
+        from models import User as UserModel
+        user = UserModel(
+            discord_id=discord_id,
+            username=username or f"User {discord_id}",
+            role_id=role.id,
+            is_active=True,
+        )
+        db.add(user)
+        await db.flush()
+        previous_name = "member"
+    else:
+        current_role = await db.scalar(select(Role).where(Role.id == user.role_id)) if user.role_id else None
+        previous_name = current_role.name if current_role else "member"
+        user.role_id = role.id
+        await db.flush()
+
+    return {
+        "user_id": user.id,
+        "username": user.username,
+        "previous_role": previous_name,
+        "new_role": role_name,
+        "action": "add_staff",
+    }
