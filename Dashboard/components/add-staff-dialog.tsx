@@ -27,7 +27,7 @@ export function AddStaffDialog() {
   const addStaff = useAddStaff()
 
   const nonStaffMembers = members?.filter((m) => !m.is_staff) ?? []
-  const availableRoles = roles?.filter((r) => ASSIGNABLE_ROLES.includes(r.name.toLowerCase())) ?? []
+  const availableRoles = roles?.filter((r) => r.name && ASSIGNABLE_ROLES.includes(r.name.toLowerCase())) ?? []
 
   function reset() {
     setDiscordId(''); setManualUsername(''); setSelectedMember(null); setSelectedUser(null); setRole('helper'); setTab('id')
