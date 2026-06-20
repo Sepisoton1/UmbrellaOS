@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from pydantic import BaseModel
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database import get_db
 from models import Punishment, Player
@@ -66,6 +66,12 @@ async def list_punishments(
 
     if active_only:
         query = query.where(Punishment.active == True)
+        # Also exclude punishments that have time-expired but were never
+        # explicitly revoked — expires_at is just stored data otherwise,
+        # it never gets compared anywhere.
+        query = query.where(
+            (Punishment.expires_at == None) | (Punishment.expires_at > datetime.now(timezone.utc))
+        )
 
     query = query.offset(skip).limit(limit)
 

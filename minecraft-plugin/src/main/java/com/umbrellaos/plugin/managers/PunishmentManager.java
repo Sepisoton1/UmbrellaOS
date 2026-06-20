@@ -3,6 +3,7 @@ package com.umbrellaos.plugin.managers;
 import com.umbrellaos.plugin.api.CoreApiClient;
 
 import java.util.*;
+import java.time.OffsetDateTime;
 import java.util.concurrent.CompletableFuture;
 
 public class PunishmentManager {
@@ -22,6 +23,30 @@ public class PunishmentManager {
         });
     }
 
+    /**
+     * Blocking version of refresh() — waits for the API response before
+     * returning, so callers (e.g. the login check) can safely call
+     * isBanned()/isMuted() immediately after with up-to-date data.
+     */
+    public void refreshSync(UUID uuid) {
+        try {
+            List<Map<String, Object>> punishments = apiClient.getPunishments(uuid.toString()).get();
+            punishmentCache.put(uuid, punishments);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private boolean isExpired(Map<String, Object> punishment) {
+        Object expiresAt = punishment.get("expires_at");
+        if (expiresAt == null) return false;
+        try {
+            return OffsetDateTime.parse(expiresAt.toString()).isBefore(OffsetDateTime.now());
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public boolean isBanned(UUID uuid) {
         List<Map<String, Object>> punishments = punishmentCache.get(uuid);
         if (punishments == null) {
@@ -30,7 +55,8 @@ public class PunishmentManager {
         for (Map<String, Object> punishment : punishments) {
             String type = (String) punishment.get("type");
             Boolean active = (Boolean) punishment.get("active");
-            if (("ban".equalsIgnoreCase(type) || "tempban".equalsIgnoreCase(type)) && Boolean.TRUE.equals(active)) {
+            if (("ban".equalsIgnoreCase(type) || "tempban".equalsIgnoreCase(type))
+                    && Boolean.TRUE.equals(active) && !isExpired(punishment)) {
                 return true;
             }
         }

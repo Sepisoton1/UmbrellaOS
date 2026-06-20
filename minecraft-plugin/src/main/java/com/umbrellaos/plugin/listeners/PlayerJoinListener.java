@@ -5,6 +5,7 @@ import com.umbrellaos.plugin.managers.PunishmentManager;
 import com.umbrellaos.plugin.managers.VerificationManager;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -34,15 +35,25 @@ public class PlayerJoinListener implements Listener {
         String uuid = player.getUniqueId().toString();
         String username = player.getName();
 
-        // Refresh punishments for this player
-        punishmentManager.refresh(player.getUniqueId());
+        Plugin umbrellaPlugin = Bukkit.getPluginManager().getPlugin("UmbrellaOS");
 
-        // Check if player is banned
-        if (punishmentManager.isBanned(player.getUniqueId())) {
-            String reason = punishmentManager.getBanReason(player.getUniqueId());
-            player.kickPlayer("§cYou are banned: " + (reason != null ? reason : "No reason provided"));
-            return;
-        }
+        // Refresh punishments off the main thread (blocking HTTP call), then
+        // act on the result back on the main thread. This fixes a race where
+        // refresh() returned immediately while isBanned() ran on stale/empty
+        // cache data, letting banned players through.
+        Bukkit.getScheduler().runTaskAsynchronously(umbrellaPlugin, () -> {
+            punishmentManager.refreshSync(player.getUniqueId());
+
+            Bukkit.getScheduler().runTask(umbrellaPlugin, () -> {
+                if (!player.isOnline()) return;
+                boolean banned = punishmentManager.isBanned(player.getUniqueId());
+                Bukkit.getLogger().info("[UmbrellaOS] Punishment check for " + player.getName() + " (" + player.getUniqueId() + "): banned=" + banned);
+                if (banned) {
+                    String reason = punishmentManager.getBanReason(player.getUniqueId());
+                    player.kickPlayer("§cYou are banned: " + (reason != null ? reason : "No reason provided"));
+                }
+            });
+        });
 
         // Check verification status if verify on join is enabled
         if (verifyOnJoin) {
