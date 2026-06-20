@@ -102,6 +102,21 @@ export function useServers() {
 export function useAnalytics() {
   return useQuery({ queryKey: ['analytics'], queryFn: api.getServerSummary })
 }
+export function useDiscordMembers() {
+  return useQuery({ queryKey: ['discord-members'], queryFn: api.getDiscordMembers })
+}
+
+export function useAddStaff() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { discord_id: string; role: string; username?: string }) =>
+      api.addStaff(body),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff'] })
+    },
+  })
+}
+
 export function useSettings() {
   return useQuery({ queryKey: ['settings'], queryFn: api.getSettings, retry: false })
 }

@@ -1,4 +1,5 @@
 'use client'
+import { AddStaffDialog } from '@/components/add-staff-dialog'
 
 import { ChevronUp, ChevronDown, UserPlus, ShieldCheck } from 'lucide-react'
 import { toast } from 'sonner'
@@ -23,9 +24,7 @@ export default function StaffPage() {
   return (
     <>
       <PageHeader title="Staff" description="Role hierarchy, permissions and team management.">
-        <Button size="sm" disabled title="Invite via Discord OAuth login">
-          <UserPlus className="size-4" /> Add staff
-        </Button>
+        <AddStaffDialog />
       </PageHeader>
       <section aria-label="Roles" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {rolesLoading || !roles

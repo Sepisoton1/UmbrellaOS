@@ -73,6 +73,9 @@ export const api = {
     ])
     return mapStaff(users, roles)
   },
+  getDiscordMembers: () => request<{discord_id: string; username: string; is_staff: boolean}[]>('/staff/discord-members'),
+  addStaff: (body: { discord_id: string; role: string; username?: string }) =>
+    request('/staff/add', { method: 'POST', body: JSON.stringify(body) }),
   getRoles: () => request<Record<string, unknown>[]>('/roles').then(mapRoles),
   getPlugins: () => request<Record<string, unknown>[]>('/dashboard/plugins').then((d) => d.map(mapPlugin)),
   getServers: () => request<Record<string, unknown>[]>('/dashboard/servers').then((d) => d.map(mapServer)),
