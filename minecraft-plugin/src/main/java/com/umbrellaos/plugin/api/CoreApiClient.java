@@ -130,7 +130,7 @@ public class CoreApiClient {
     public CompletableFuture<String> requestVerification(String playerUuid, String username, String ipAddress) {
         JsonObject body = new JsonObject();
         body.addProperty("player_uuid", playerUuid);
-        body.addProperty("username", username);
+        body.addProperty("player_username", username);
         body.addProperty("ip_address", ipAddress);
         return asyncPost("/api/v1/verification/request", body).thenApply(response -> response);
     }
@@ -163,7 +163,7 @@ public class CoreApiClient {
 
     public CompletableFuture<Void> postSnapshot(String playerUuid, Map<String, Object> snapshotData) {
         JsonObject body = gson.toJsonTree(snapshotData).getAsJsonObject();
-        body.addProperty("player_uuid", playerUuid);
+        body.addProperty("minecraft_uuid", playerUuid);
         return asyncPost("/api/v1/snapshots", body).thenApply(response -> null);
     }
 
@@ -190,7 +190,7 @@ public class CoreApiClient {
         JsonObject body = new JsonObject();
         body.addProperty("player_uuid", playerUuid);
         body.addProperty("ip_address", ipAddress);
-        body.addProperty("username", username);
+        body.addProperty("player_username", username);
         return asyncPost("/api/v1/alts/check", body).thenApply(response -> parseJson(response, Map.class));
     }
 
@@ -211,7 +211,7 @@ public class CoreApiClient {
             String playerUuid, String username, String checkName, String verbose, int vl) {
         JsonObject body = new JsonObject();
         body.addProperty("player_uuid", playerUuid);
-        body.addProperty("username", username);
+        body.addProperty("player_username", username);
         body.addProperty("check_name", checkName);
         body.addProperty("verbose", verbose);
         body.addProperty("vl", vl);
