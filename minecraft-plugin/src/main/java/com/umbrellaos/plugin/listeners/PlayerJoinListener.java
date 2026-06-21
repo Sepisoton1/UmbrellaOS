@@ -9,10 +9,12 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.AsyncPlayerPreLoginEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class PlayerJoinListener implements Listener {
     private final CoreApiClient apiClient;
@@ -28,56 +30,60 @@ public class PlayerJoinListener implements Listener {
         this.verifyOnJoin = verifyOnJoin;
     }
 
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onPreLogin(AsyncPlayerPreLoginEvent event) {
+        UUID uuid = event.getUniqueId();
+        String username = event.getName();
+        String ipAddress = event.getAddress().getHostAddress();
+
+        try {
+            punishmentManager.refreshSync(uuid);
+            if (punishmentManager.isBanned(uuid)) {
+                String reason = punishmentManager.getBanReason(uuid);
+                event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_BANNED,
+                    "\u00a7cYou are banned: " + (reason != null ? reason : "No reason provided"));
+                return;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (verifyOnJoin) {
+            try {
+                Boolean isVerified = apiClient.checkVerificationStatus(uuid.toString()).get();
+                if (!Boolean.TRUE.equals(isVerified)) {
+                    String rawResponse = apiClient.requestVerification(uuid.toString(), username, ipAddress).get();
+                    String code;
+                    try {
+                        com.google.gson.JsonObject json = com.google.gson.JsonParser.parseString(rawResponse).getAsJsonObject();
+                        code = json.get("code").getAsString();
+                    } catch (Exception ex) {
+                        code = rawResponse;
+                    }
+                    event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
+                        "\u00a76\u00a7lVerification Required\n\n" +
+                        "\u00a7eSend this code to \u00a7bUmbrellaBot\u00a7e on Discord:\n\n" +
+                        "\u00a7f\u00a7l" + code + "\n\n" +
+                        "\u00a77Rejoin after verifying.");
+                    return;
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
+                    "\u00a7cVerification check failed. Please try again.");
+                return;
+            }
+        }
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
         String ipAddress = player.getAddress().getAddress().getHostAddress();
         String uuid = player.getUniqueId().toString();
         String username = player.getName();
-
         Plugin umbrellaPlugin = Bukkit.getPluginManager().getPlugin("UmbrellaOS");
 
-        // Refresh punishments off the main thread (blocking HTTP call), then
-        // act on the result back on the main thread. This fixes a race where
-        // refresh() returned immediately while isBanned() ran on stale/empty
-        // cache data, letting banned players through.
-        Bukkit.getScheduler().runTaskAsynchronously(umbrellaPlugin, () -> {
-            punishmentManager.refreshSync(player.getUniqueId());
-
-            Bukkit.getScheduler().runTask(umbrellaPlugin, () -> {
-                if (!player.isOnline()) return;
-                boolean banned = punishmentManager.isBanned(player.getUniqueId());
-                Bukkit.getLogger().info("[UmbrellaOS] Punishment check for " + player.getName() + " (" + player.getUniqueId() + "): banned=" + banned);
-                if (banned) {
-                    String reason = punishmentManager.getBanReason(player.getUniqueId());
-                    player.kickPlayer("§cYou are banned: " + (reason != null ? reason : "No reason provided"));
-                }
-            });
-        });
-
-        // Check verification status if verify on join is enabled
-        if (verifyOnJoin) {
-            Bukkit.getScheduler().runTaskAsynchronously(Bukkit.getPluginManager().getPlugin("UmbrellaOS"), () -> {
-                try {
-                    Boolean isVerified = apiClient.checkVerificationStatus(uuid).get();
-                    if (!Boolean.TRUE.equals(isVerified)) {
-                        // Player is not verified, put in limbo
-                        Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("UmbrellaOS"), () -> {
-                            try {
-                                String code = apiClient.requestVerification(uuid, username, ipAddress).get();
-                                verificationManager.putInLimbo(player.getUniqueId(), code);
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                            }
-                        });
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-
-        // Post join event
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("ip", ipAddress);
         apiClient.postEvent("player_join", uuid, username, metadata).exceptionally(e -> {
@@ -85,8 +91,7 @@ public class PlayerJoinListener implements Listener {
             return null;
         });
 
-        // Check alt detection asynchronously
-        Bukkit.getScheduler().runTaskAsynchronously(Bukkit.getPluginManager().getPlugin("UmbrellaOS"), () -> {
+        Bukkit.getScheduler().runTaskAsynchronously(umbrellaPlugin, () -> {
             apiClient.checkAltDetection(uuid, ipAddress, username).exceptionally(e -> {
                 e.printStackTrace();
                 return null;

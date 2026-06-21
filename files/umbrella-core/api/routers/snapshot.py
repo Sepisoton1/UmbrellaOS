@@ -1,3 +1,4 @@
+import json
 """
 api/routers/snapshot.py — Snapshot endpoints.
 
@@ -53,6 +54,14 @@ async def create_snapshot(
     if body.timestamp:
         timestamp = datetime.fromisoformat(body.timestamp.replace("Z", "+00:00"))
 
+    def _parse_json_field(val):
+        if isinstance(val, str):
+            try:
+                return json.loads(val)
+            except Exception:
+                return None
+        return val
+
     try:
         snapshot = await snapshot_service.create_snapshot(
             db,
@@ -61,9 +70,9 @@ async def create_snapshot(
             health=body.health,
             food=body.food,
             xp=body.xp,
-            inventory=body.inventory,
-            armor=body.armor,
-            offhand=body.offhand,
+            inventory=_parse_json_field(body.inventory),
+            armor=_parse_json_field(body.armor),
+            offhand=_parse_json_field(body.offhand),
             x=body.x,
             y=body.y,
             z=body.z,

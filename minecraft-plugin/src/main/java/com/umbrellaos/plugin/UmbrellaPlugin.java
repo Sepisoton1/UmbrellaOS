@@ -4,6 +4,7 @@ import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.umbrellaos.plugin.api.CoreApiClient;
 import com.umbrellaos.plugin.commands.DiscCommand;
+import com.umbrellaos.plugin.commands.UmbrellaFlagCommand;
 import com.umbrellaos.plugin.commands.VerifyCommand;
 import com.umbrellaos.plugin.commands.LangCommand;
 import com.umbrellaos.plugin.config.PluginConfig;
@@ -87,6 +88,7 @@ public class UmbrellaPlugin extends JavaPlugin {
 
         // Register commands
         getCommand("verify").setExecutor(new VerifyCommand(verificationManager));
+        getCommand("umbrellaflag").setExecutor(new UmbrellaFlagCommand(apiClient));
         getCommand("disc").setExecutor(new DiscCommand(apiClient, bridgeManager));
         getCommand("lang").setExecutor(new LangCommand(apiClient, this));
         getCommand("translate").setExecutor(new LangCommand(apiClient, this));

@@ -17,3 +17,7 @@ commands:
   translate:
     description: Toggle auto-translation
     usage: /translate <on|off>
+  umbrellaflag:
+    description: Internal GrimAC flag handler
+    usage: /umbrellaflag <player> <check> <vl>
+    permission: umbrella.internal
