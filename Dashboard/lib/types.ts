@@ -289,7 +289,7 @@ export interface FlaggedPlayer {
   uuid: string
   username: string
   suspicion_score: number
-  created_at: string
+  first_seen: string
 }
 
 export interface AnalyticsEvent {

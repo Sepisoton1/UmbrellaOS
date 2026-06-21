@@ -25,9 +25,9 @@ class CreateSnapshotRequest(BaseModel):
     health: float | None = None
     food: int | None = None
     xp: float | None = None
-    inventory: dict | None = None
-    armor: dict | None = None
-    offhand: dict | None = None
+    inventory: dict | list | str | None = None
+    armor: dict | list | str | None = None
+    offhand: dict | str | None = None
     x: float | None = None
     y: float | None = None
     z: float | None = None

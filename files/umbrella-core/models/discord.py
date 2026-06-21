@@ -45,6 +45,7 @@ class ChatMessage(Base):
         String(36), ForeignKey("players.uuid", ondelete="SET NULL"), nullable=True, index=True
     )
     discord_id: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
+    player_name: Mapped[str | None] = mapped_column(String(64), nullable=True)
     discord_channel_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
     message: Mapped[str] = mapped_column(Text, nullable=False)
     translated_message: Mapped[str | None] = mapped_column(Text, nullable=True)

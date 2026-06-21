@@ -24,6 +24,7 @@ router = APIRouter(prefix="/api/v1/bridge", tags=["bridge"])
 class BridgeMessageRequest(BaseModel):
     source: str  # "minecraft" or "discord"
     player_uuid: str | None = None
+    player_name: str | None = None
     discord_id: str | None = None
     message: str
     channel_id: str | None = None
@@ -40,6 +41,7 @@ class ChatMessageSchema(BaseModel):
     id: int
     source: str
     player_uuid: str | None
+    player_name: str | None = None
     discord_id: str | None
     discord_channel_id: str | None
     message: str
@@ -101,6 +103,7 @@ async def receive_bridge_message(
     chat_message = ChatMessage(
         source=body.source,
         player_uuid=body.player_uuid,
+        player_name=body.player_name,
         discord_id=body.discord_id,
         discord_channel_id=body.channel_id,
         message=body.message,

@@ -12,12 +12,18 @@ intents.guilds = True
 intents.message_content = True
 intents.members = True
 
-bot = discord.Bot(intents=intents)
+bot = discord.Bot(intents=intents, debug_guilds=[1503072397828423700])
 
 
 @bot.event
 async def on_ready():
     print(f"[Discord Bot] Logged in as {bot.user}")
+    if bot.user.name != "Moon-Bot":
+        try:
+            await bot.user.edit(username="Moon-Bot")
+            print("[Discord Bot] Renamed account to Moon-Bot")
+        except Exception as e:
+            print(f"[Discord Bot] Could not rename account (rate-limited?): {e}")
     try:
         async with httpx.AsyncClient() as client:
             r = await client.get(f"{config.UMBRELLA_API_URL}/health", timeout=5.0)
@@ -28,11 +34,11 @@ async def on_ready():
     if config.BRIDGE_CHANNEL_ID:
         ch = bot.get_channel(config.BRIDGE_CHANNEL_ID)
         if ch:
-            await ch.send("🟢 **UmbrellaOS Discord Bot** is online")
+            await ch.send("🌙 **MOON Discord Bot** is online")
 
 
 for ext in ("cogs.chat_bridge", "cogs.events", "cogs.ai_alerts", "cogs.ai_config",
-            "cogs.mc_commands", "cogs.announcements", "cogs.moderation"):
+            "cogs.mc_commands", "cogs.announcements", "cogs.moderation", "cogs.ai_chat"):
     try:
         bot.load_extension(ext)
         print(f"[Discord Bot] Loaded {ext}")

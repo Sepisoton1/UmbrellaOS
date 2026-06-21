@@ -48,7 +48,7 @@ class Events(commands.Cog):
                         if msg["id"] > self.last_seen_id:
                             self.last_seen_id = msg["id"]
                             # Get player name from message or use UUID
-                            player_name = msg.get("player_uuid", "Unknown")
+                            player_name = msg.get("player_name") or msg.get("player_uuid", "Unknown")
                             # Send to Discord via chat bridge
                             chat_bridge = self.bot.get_cog("ChatBridge")
                             if chat_bridge:
@@ -85,7 +85,7 @@ class Events(commands.Cog):
     async def handle_event_message(self, msg: dict):
         """Handle an event message from Minecraft."""
         message = msg.get("message", "")
-        player_name = msg.get("player_uuid", "Unknown")
+        player_name = msg.get("player_name") or msg.get("player_uuid", "Unknown")
         
         # Parse event types from message content
         event_emoji = ""

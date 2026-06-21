@@ -75,7 +75,7 @@ export default function AltsPage() {
                               <span className="text-orange-600 font-bold">MEDIUM</span>
                             )}
                           </TableCell>
-                          <TableCell>{timeAgo(player.created_at)}</TableCell>
+                          <TableCell>{timeAgo(player.first_seen)}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
                               <Button size="sm" variant="outline">
