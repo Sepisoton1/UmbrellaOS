@@ -16,7 +16,6 @@ Setup required:
        for ext in (..., "cogs.moderation", "cogs.ai_chat"):
   3. cogs.moderation must already be loaded (this cog imports helpers from it).
 """
-import os
 import re
 import json
 import time
@@ -34,9 +33,11 @@ from cogs.moderation import (
     api_post,
     find_player,
 )
+from settings_client import get_setting
 
 # ── Config ───────────────────────────────────────────────────────────────────
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+# OPENROUTER_API_KEY now comes from the dashboard (Settings -> ai.openrouter_key),
+# fetched via settings_client, NOT from this bot's own .env. One source of truth.
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_MODELS_URL = "https://openrouter.ai/api/v1/models"
 
@@ -72,21 +73,23 @@ ACTION_DESCRIPTIONS = (
 )
 
 
-def is_ai_configured() -> bool:
-    return OPENROUTER_API_KEY not in PLACEHOLDER_VALUES
+async def is_ai_configured() -> bool:
+    key = await get_setting("ai.openrouter_key")
+    return key not in PLACEHOLDER_VALUES
 
 
 async def select_best_free_model() -> str:
     """Ask OpenRouter what's currently available and pick the best free model
     from our priority list, falling back to any free model if none match."""
     global AI_MODEL
-    if not is_ai_configured():
+    key = await get_setting("ai.openrouter_key")
+    if key in PLACEHOLDER_VALUES:
         return AI_MODEL
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
             r = await client.get(
                 OPENROUTER_MODELS_URL,
-                headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
+                headers={"Authorization": f"Bearer {key}"},
             )
             r.raise_for_status()
             available = {m["id"] for m in r.json().get("data", []) if m.get("id")}
@@ -107,11 +110,12 @@ async def query_ai(system_prompt: str, user_message: str, history: list | None =
     """Call OpenRouter with automatic fallback across free models if the
     current one is rate-limited, unavailable, or errors out."""
     global AI_MODEL
-    if not is_ai_configured():
-        return "⚠️ AI is not configured. Set OPENROUTER_API_KEY in the bot's .env file."
+    key = await get_setting("ai.openrouter_key")
+    if key in PLACEHOLDER_VALUES:
+        return "⚠️ AI is not configured. Set the OpenRouter key in Dashboard → Settings → AI."
 
     headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
         "HTTP-Referer": "https://github.com/MOON",
         "X-Title": "MOON",
@@ -222,7 +226,7 @@ class AIChat(commands.Cog):
         embed = discord.Embed(title="🌙 MOON AI Model", color=discord.Color.blurple())
         embed.add_field(name="Current model", value=f"`{AI_MODEL}`", inline=False)
         embed.add_field(name="Locked", value=str(AI_MODEL_LOCKED), inline=True)
-        embed.add_field(name="Configured", value=str(is_ai_configured()), inline=True)
+        embed.add_field(name="Configured", value=str(await is_ai_configured()), inline=True)
         embed.set_footer(text="/aimodel refresh — re-scan free models")
         await ctx.followup.send(embed=embed)
 

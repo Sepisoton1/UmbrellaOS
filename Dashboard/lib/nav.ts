@@ -26,6 +26,9 @@ export interface NavItem {
   href: string
   icon: LucideIcon
   group: 'Overview' | 'Moderation' | 'Network' | 'System'
+  // If set, only users whose role is in this list see the menu item.
+  // Leave undefined to show it to every logged-in role.
+  roles?: string[]
 }
 
 export const navItems: NavItem[] = [
@@ -35,7 +38,7 @@ export const navItems: NavItem[] = [
   { title: 'Replay', href: '/replay', icon: Film, group: 'Overview' },
   { title: 'Snapshots', href: '/snapshots', icon: Camera, group: 'Overview' },
   { title: 'AI Tasks', href: '/ai-tasks', icon: Bot, group: 'Overview' },
-  { title: 'AI Config', href: '/ai-config', icon: Wand2, group: 'Overview' },
+  { title: 'AI Config', href: '/ai-config', icon: Wand2, group: 'Overview', roles: ['admin', 'owner'] },
   { title: 'Punishments', href: '/punishments', icon: Gavel, group: 'Moderation' },
   { title: 'Appeals', href: '/appeals', icon: MessagesSquare, group: 'Moderation' },
   { title: 'Staff', href: '/staff', icon: ShieldCheck, group: 'Moderation' },
@@ -46,8 +49,8 @@ export const navItems: NavItem[] = [
   { title: 'Announcements', href: '/announcements', icon: Megaphone, group: 'Network' },
   { title: 'Translation', href: '/translation', icon: Languages, group: 'Network' },
   { title: 'System Health', href: '/system', icon: HeartPulse, group: 'System' },
-  { title: 'Audit Log', href: '/audit', icon: FileClock, group: 'System' },
-  { title: 'Settings', href: '/settings', icon: Settings, group: 'System' },
+  { title: 'Audit Log', href: '/audit', icon: FileClock, group: 'System', roles: ['admin', 'owner'] },
+  { title: 'Settings', href: '/settings', icon: Settings, group: 'System', roles: ['owner'] },
 ]
 
 export const navGroups = ['Overview', 'Moderation', 'Network', 'System'] as const

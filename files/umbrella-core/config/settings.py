@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     rcon_password: str = ""
     openrouter_api_key: str = ""
 
+    # Emergency recovery: when true, settings seeding force-overwrites
+    # DB values from .env on next boot (instead of only filling gaps).
+    # Meant to be set manually for a single restart, then turned back off.
+    force_env_override: bool = False
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

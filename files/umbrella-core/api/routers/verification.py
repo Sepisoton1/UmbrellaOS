@@ -152,21 +152,45 @@ async def confirm_verification(
     
     # Mark code as used
     verification_code.used = True
-    
-    # Create or update DiscordAccount
+
+    # Is this Discord account already verified and linked to a DIFFERENT player?
     existing_account = await db.execute(
         select(DiscordAccount).where(DiscordAccount.discord_id == body.discord_id)
     )
     account = existing_account.scalar_one_or_none()
-    
+
+    if account and account.verified and account.player_uuid and account.player_uuid != verification_code.player_uuid:
+        raise HTTPException(
+            status_code=409,
+            detail="This Discord account is already linked to a different Minecraft account and cannot be relinked."
+        )
+
+    # Is this Minecraft account already verified and linked to a DIFFERENT Discord account?
+    existing_for_player = await db.execute(
+        select(DiscordAccount).where(
+            and_(
+                DiscordAccount.player_uuid == verification_code.player_uuid,
+                DiscordAccount.verified == True,
+                DiscordAccount.discord_id != body.discord_id,
+            )
+        )
+    )
+    if existing_for_player.scalar_one_or_none():
+        raise HTTPException(
+            status_code=409,
+            detail="This Minecraft account is already linked to a different Discord account."
+        )
+
     if account:
-        # Update existing account
-        account.player_uuid = verification_code.player_uuid
-        account.verified = True
-        account.linked_at = datetime.utcnow()
-        account.discord_username = body.discord_username
+        if account.verified and account.player_uuid == verification_code.player_uuid:
+            # Already linked to this exact pair — treat as idempotent success, no changes needed
+            pass
+        else:
+            account.player_uuid = verification_code.player_uuid
+            account.verified = True
+            account.linked_at = datetime.utcnow()
+            account.discord_username = body.discord_username
     else:
-        # Create new account
         account = DiscordAccount(
             discord_id=body.discord_id,
             player_uuid=verification_code.player_uuid,

@@ -4,6 +4,7 @@ import { Umbrella } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { navGroups, navItems } from '@/lib/nav'
+import { useAuth } from '@/components/auth-context'
 import {
   Sidebar,
   SidebarContent,
@@ -20,6 +21,13 @@ import {
 
 export function AppSidebar() {
   const pathname = usePathname()
+  const { user } = useAuth()
+
+  // Hide menu items the current user's role isn't allowed to see.
+  // Items with no `roles` set are visible to everyone.
+  const visibleItems = navItems.filter(
+    (item) => !item.roles || (user?.role && item.roles.includes(user.role))
+  )
 
   function isActive(href: string) {
     if (href === '/') return pathname === '/'
@@ -48,7 +56,7 @@ export function AppSidebar() {
             <SidebarLabel>{group}</SidebarLabel>
             <SidebarGroupContent>
               <SidebarMenu>
-                {navItems
+                {visibleItems
                   .filter((item) => item.group === group)
                   .map((item) => (
                     <SidebarMenuItem key={item.href}>

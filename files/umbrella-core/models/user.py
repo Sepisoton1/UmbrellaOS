@@ -7,7 +7,7 @@ Session: Token-based session tracking
 """
 import uuid
 from datetime import datetime, timedelta
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, JSON, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database.engine import Base
@@ -28,6 +28,14 @@ class User(Base):
         String(36), ForeignKey("roles.id", ondelete="SET NULL"), nullable=True
     )
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+    # Per-user nav/feature exceptions — grants access to specific gated
+    # pages (e.g. "ai_config", "audit") regardless of role. Empty by
+    # default. Use this for one-off grants instead of changing someone's
+    # whole role ladder position.
+    extra_permissions: Mapped[list[str]] = mapped_column(
+        JSON, nullable=False, default=list, server_default="[]"
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

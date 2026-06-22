@@ -26,7 +26,7 @@ public class GrimFlagListener implements Listener {
     public static void register(UmbrellaPlugin plugin, AnticheatManager anticheatManager,
                                 PunishmentManager punishmentManager) {
         if (Bukkit.getPluginManager().getPlugin("GrimAC") == null) {
-            plugin.getLogger().info("GrimAC not found — anticheat bridge disabled");
+            plugin.getLogger().info("GrimAC not found -- anticheat bridge disabled");
             return;
         }
         try {
@@ -77,17 +77,64 @@ public class GrimFlagListener implements Listener {
                 vl = (int) event.getClass().getMethod("getVl").invoke(event);
             } catch (ReflectiveOperationException ignored) { }
 
+            final String finalCheckName = checkName;
+            final String finalVerbose = verbose;
+            final int finalVl = vl;
+            final String finalUsername = username;
+
             anticheatManager.handleFlag(uuid, username, checkName, verbose, vl).thenAccept(result -> {
-                if (Boolean.TRUE.equals(result.get("kick"))) {
-                    Bukkit.getScheduler().runTask(Bukkit.getPluginManager().getPlugin("UmbrellaOS"), () -> {
-                        punishmentManager.refresh(uuid);
-                        Player player = Bukkit.getPlayer(uuid);
-                        if (player != null && punishmentManager.isBanned(uuid)) {
-                            String reason = punishmentManager.getBanReason(uuid);
-                            player.kickPlayer("§c[Anti-Cheat] " + (reason != null ? reason : "Cheating detected"));
+                String action = String.valueOf(result.getOrDefault("action", "tempban"));
+                String reason = String.valueOf(result.getOrDefault("reason", "[Grim] " + finalCheckName));
+                String displayUser = String.valueOf(result.getOrDefault("username", uuid.toString()));
+                double confidence = 0.0;
+                try { confidence = Double.parseDouble(String.valueOf(result.getOrDefault("ai_confidence", "0.0"))); } catch (Exception ignored) {}
+                final double finalConf = confidence;
+
+                org.bukkit.plugin.Plugin plugin = Bukkit.getPluginManager().getPlugin("UmbrellaOS");
+
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    // Notify online staff in-game
+                    String confStr = String.format("%.0f%%", finalConf * 100);
+                    String staffMsg = "\u00a7e[AC] \u00a7f" + displayUser
+                            + " \u00a77flagged: \u00a7e" + finalCheckName
+                            + " \u00a77VL:\u00a7c" + finalVl
+                            + " \u00a77conf:\u00a76" + confStr
+                            + " \u00a77-> \u00a7c" + action.toUpperCase();
+                    for (Player online : Bukkit.getOnlinePlayers()) {
+                        if (online.hasPermission("umbrellaos.staff")) {
+                            online.sendMessage(staffMsg);
                         }
-                    });
-                }
+                    }
+
+                    Player player = Bukkit.getPlayer(uuid);
+                    if (player == null) return;
+
+                    switch (action) {
+                        case "warn":
+                            player.sendMessage("\u00a7e[Anti-Cheat] \u00a7fFlagged for \u00a7e"
+                                    + finalCheckName + "\u00a7f. Play fairly.");
+                            break;
+
+                        case "kick":
+                            player.kickPlayer("\u00a7c[Anti-Cheat] Kicked for suspicious activity: "
+                                    + finalCheckName
+                                    + "\n\u00a77This is not a ban. You may rejoin.");
+                            break;
+
+                        case "tempban":
+                        default:
+                            punishmentManager.refresh(uuid);
+                            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                                Player p2 = Bukkit.getPlayer(uuid);
+                                if (p2 != null) {
+                                    p2.kickPlayer("\u00a7c[Anti-Cheat] You have been temporarily banned."
+                                            + "\n\u00a77Reason: " + reason
+                                            + "\n\u00a77Appeal in our Discord server.");
+                                }
+                            }, 10L);
+                            break;
+                    }
+                });
             });
         } catch (Exception e) {
             e.printStackTrace();

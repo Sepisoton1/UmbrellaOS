@@ -12,13 +12,46 @@ Rules:
 - On first boot, default settings are seeded from .env values.
 """
 import json
+from pathlib import Path
 from typing import Optional
+from dotenv import set_key
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from models.setting import Setting
 from models.audit_log import AuditLog
 
 SENSITIVE_MASK = "***"
+
+# Path to the .env file (one directory up from services/)
+ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
+
+# Maps DB setting keys -> .env variable names, for settings that have
+# a real environment-variable counterpart. Settings not listed here
+# (e.g. server.max_players) are DB-only and never touch .env.
+ENV_KEY_MAP: dict[str, str] = {
+    "discord.client_id": "DISCORD_CLIENT_ID",
+    "discord.client_secret": "DISCORD_CLIENT_SECRET",
+    "discord.bot_token": "DISCORD_BOT_TOKEN",
+    "ai.openrouter_key": "OPENROUTER_API_KEY",
+    "rcon.host": "RCON_HOST",
+    "rcon.port": "RCON_PORT",
+    "rcon.password": "RCON_PASSWORD",
+}
+
+
+def write_env_value(key: str, value: str) -> None:
+    """
+    Write a setting's value into .env, if that key has a mapped env var.
+    No-op for keys with no env counterpart. Safe to call on every update.
+    """
+    env_var = ENV_KEY_MAP.get(key)
+    if env_var is None:
+        return
+    try:
+        set_key(str(ENV_PATH), env_var, value, quote_mode="never")
+    except Exception as e:
+        # Never let a .env write failure break a settings update
+        print(f"[SettingsService] Failed to write {env_var} to .env: {e}")
 
 # Default settings seeded on first boot.
 # Format: (key, default_value, category, description, sensitive, requires_restart)
@@ -34,6 +67,7 @@ DEFAULT_SETTINGS: list[tuple] = [
     ("ai.openrouter_key",      "",     "ai",     "OpenRouter API key",          True,  False),
     ("ai.model",               "openai/gpt-4o-mini", "ai", "AI model string",  False, False),
     ("ai.anthropic_api_key",   "",     "ai",     "Anthropic API key",          True,  False),
+    ("discord.ip_response",    "",     "discord", "Text the bot replies with when someone types !ip in Discord", False, False),
     ("server.name",            "UmbrellaMC", "server", "Server display name",  False, False),
     ("server.max_players",     "50",   "server", "Max player slots",            False, False),
     ("server.maintenance_mode", "false", "server", "Maintenance mode active",  False, False),
@@ -49,8 +83,10 @@ DEFAULT_SETTINGS: list[tuple] = [
      "How often the plugin syncs mutes from Core (seconds)", False, False),
     ("sync.plugin_heartbeat_timeout", "120", "sync",
      "Seconds before plugin is marked offline", False, False),
-    ("anticheat.enabled", "true", "anticheat",
-     "Enable Grim anticheat integration", False, False),
+    ("anticheat.enabled",          "true",  "anticheat", "Enable Grim anticheat integration",              False, False),
+    ("anticheat.warn_vl_threshold", "10",   "anticheat", "VL below this = warn only (no kick/ban)",        False, False),
+    ("anticheat.kick_vl_threshold", "30",   "anticheat", "VL below this = kick; at/above = tempban",       False, False),
+    ("anticheat.ai_review",         "true", "anticheat", "AI analyses each flag and adjusts confidence",   False, False),
     ("anticheat.auto_tempban", "true", "anticheat",
      "Auto temp-ban on Grim detection", False, False),
     ("anticheat.tempban_hours", "24", "anticheat",
@@ -90,19 +126,46 @@ class SettingsService:
                 ))
         await db.commit()
 
-        # Sync .env values into DB on every startup
+        # Sync DB settings from .env on startup.
+        # Default mode: GAP-FILL ONLY — only fills settings that are
+        # currently EMPTY in the DB, never overwrites a value already
+        # set via the dashboard.
+        #
+        # Emergency mode: if FORCE_ENV_OVERRIDE=true in .env, every
+        # mapped setting is force-overwritten from .env instead,
+        # regardless of its current DB value. Intended for one-time
+        # lockout recovery — turn the flag back off afterward.
         from config.settings import get_settings
         env = get_settings()
-        env_overrides = {
+        env_values = {
             'discord.client_id': env.discord_client_id,
             'discord.client_secret': env.discord_client_secret,
             'discord.bot_token': env.discord_bot_token,
+            'ai.openrouter_key': env.openrouter_api_key,
+            'rcon.host': env.rcon_host,
+            'rcon.port': str(env.rcon_port) if env.rcon_port else "",
+            'rcon.password': env.rcon_password,
         }
-        for key, val in env_overrides.items():
-            if val:
+
+        if env.force_env_override:
+            print("[SettingsService] FORCE_ENV_OVERRIDE=true — force-syncing settings from .env")
+            for key, val in env_values.items():
+                if not val:
+                    continue
                 setting = await db.scalar(select(Setting).where(Setting.key == key))
                 if setting is not None:
                     setting.value = val
+                    print(f"[SettingsService]   forced {key} from .env")
+            print("[SettingsService] Force sync complete. "
+                  "Set FORCE_ENV_OVERRIDE=false in .env to return to normal gap-fill mode.")
+        else:
+            for key, val in env_values.items():
+                if not val:
+                    continue
+                setting = await db.scalar(select(Setting).where(Setting.key == key))
+                if setting is not None and not setting.value:
+                    setting.value = val
+
         await db.commit()
 
     @staticmethod
@@ -160,6 +223,10 @@ class SettingsService:
         db.add(log)
         await db.commit()
         await db.refresh(setting)
+
+        # Keep .env in sync so a backend restart doesn't lose this value
+        write_env_value(key, new_value)
+
         return SettingsService._to_dict(setting, unmasked=False)
 
     @staticmethod

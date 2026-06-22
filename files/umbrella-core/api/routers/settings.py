@@ -30,9 +30,10 @@ async def list_settings(
 async def get_setting(
     key: str,
     db: AsyncSession = Depends(get_db),
-    _auth: User | str = Depends(require_owner),
+    auth: User | str = Depends(require_owner),
 ) -> dict:
-    setting = await SettingsService.get_by_key(db, key)
+    unmasked = isinstance(auth, str)
+    setting = await SettingsService.get_by_key(db, key, unmasked=unmasked)
     if setting is None:
         raise HTTPException(status_code=404, detail=f"Setting '{key}' not found")
     return setting

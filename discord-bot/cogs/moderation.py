@@ -31,11 +31,21 @@ def get_member_rank(member: discord.Member) -> str | None:
     return None
 
 
+# Per-user permission overrides. Use this to grant ONE specific person
+# extra commands without changing their Discord role or rank.
+# Keys are Discord user IDs (int), values are lists of command names
+# from the same set used in ROLE_PERMISSIONS (or "moonbrain", once wired
+# in below).
+USER_PERMISSION_OVERRIDES: dict[int, list[str]] = {
+    # 123456789012345678: ["mute", "warn"],
+}
+
+
 def can_use(member: discord.Member, command: str) -> bool:
     rank = get_member_rank(member)
-    if rank is None:
-        return False
-    return command in ROLE_PERMISSIONS.get(rank, [])
+    role_allowed = rank is not None and command in ROLE_PERMISSIONS.get(rank, [])
+    override_allowed = command in USER_PERMISSION_OVERRIDES.get(member.id, [])
+    return role_allowed or override_allowed
 
 
 async def api_get(path: str) -> dict | list | None:

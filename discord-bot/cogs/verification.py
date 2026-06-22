@@ -69,7 +69,7 @@ class Verification(commands.Cog):
     async def verify(
         self,
         ctx: discord.ApplicationContext,
-        minecraft_username: str = commands.Option(
+        minecraft_username: str = discord.Option(
             str,
             description="Minecraft username to check",
             required=False,

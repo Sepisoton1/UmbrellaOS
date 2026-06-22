@@ -21,7 +21,7 @@ class DiscordAccount(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     discord_id: Mapped[str] = mapped_column(String(32), nullable=False, unique=True, index=True)
     player_uuid: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("players.uuid", ondelete="SET NULL"), nullable=True, index=True
+        String(36), ForeignKey("players.uuid", ondelete="SET NULL"), nullable=True, index=True, unique=True
     )
     verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="false")
     linked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
