@@ -32,11 +32,12 @@ async def get_setting(
     db: AsyncSession = Depends(get_db),
     auth: User | str = Depends(require_owner),
 ) -> dict:
+    # Admin-key callers (bot, plugin) get the real value; dashboard users get masked
     unmasked = isinstance(auth, str)
     setting = await SettingsService.get_by_key(db, key, unmasked=unmasked)
     if setting is None:
         raise HTTPException(status_code=404, detail=f"Setting '{key}' not found")
-    if setting.get("sensitive"):
+    if not unmasked and setting.get("sensitive"):
         setting = {**setting, "value": "***"}
     return setting
 

@@ -306,23 +306,39 @@ async def manual_link(
     _auth: str = Depends(require_admin_key),
 ):
     """Manually link a Discord ID to a Minecraft username.
-    UUID is resolved on the player's next join via the plugin.
+    Creates a placeholder player record if one doesn't exist yet.
+    UUID gets updated to the real value on the player's next join.
     """
     from models import Player
-    # Check if discord account already linked
+    import uuid as uuid_lib
+
+    # Find or create a Player record for this username
+    player = await db.scalar(select(Player).where(Player.username == body.mc_username))
+    if player is None:
+        # Create a placeholder — the plugin will overwrite the UUID on first join
+        placeholder_uuid = f"manual-{uuid_lib.uuid4()}"
+        player = Player(
+            uuid=placeholder_uuid,
+            username=body.mc_username,
+        )
+        db.add(player)
+        await db.flush()
+    
+    player_uuid = player.uuid
+
+    # Find or update the DiscordAccount record
     existing = await db.scalar(
         select(DiscordAccount).where(DiscordAccount.discord_id == body.discord_id)
     )
     if existing:
         existing.verified = True
-        existing.discord_username = existing.discord_username or body.discord_id
-        # Store username so plugin can resolve UUID on join
-        existing.player_uuid = f"pending:{body.mc_username}"
+        existing.player_uuid = player_uuid
         existing.linked_at = datetime.utcnow()
+        existing.discord_username = existing.discord_username or body.discord_id
     else:
         existing = DiscordAccount(
             discord_id=body.discord_id,
-            player_uuid=f"pending:{body.mc_username}",
+            player_uuid=player_uuid,
             verified=True,
             linked_at=datetime.utcnow(),
             discord_username=body.discord_id,
@@ -334,11 +350,11 @@ async def manual_link(
         actor_type="staff",
         action="verification.manual_link",
         target=body.mc_username,
-        details_json=f'{{"discord_id": "{body.discord_id}"}}',
+        details_json=f'{{"discord_id": "{body.discord_id}", "player_uuid": "{player_uuid}"}}',
     )
     db.add(audit)
     await db.flush()
-    return {"success": True, "message": f"Linked {body.discord_id} to {body.mc_username}. UUID resolved on next join."}
+    return {"success": True, "message": f"Linked {body.discord_id} to {body.mc_username}. UUID resolves on next join."}
 
 
 @router.delete("/unlink/{discord_id}")
