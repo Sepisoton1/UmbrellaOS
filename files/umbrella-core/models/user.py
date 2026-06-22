@@ -82,7 +82,12 @@ class Session(Base):
 
     def is_valid(self) -> bool:
         """Check if session is valid (not expired and not revoked)."""
-        return not self.revoked and datetime.utcnow().replace(tzinfo=None) < self.expires_at.replace(tzinfo=None)
+        from datetime import timezone
+        now = datetime.now(timezone.utc)
+        expires = self.expires_at
+        if expires.tzinfo is None:
+            expires = expires.replace(tzinfo=timezone.utc)
+        return not self.revoked and now < expires
 
 
 class DiscordOAuthPending(Base):

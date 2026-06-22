@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, desc
 from database import get_db
 from models.audit_log import AuditLog
-from api.middleware.auth import require_admin_key
+from api.dependencies.permissions import require_permission
 
 router = APIRouter(prefix="/api/v1/audit", tags=["audit"])
 
@@ -34,7 +34,7 @@ async def list_audit_log(
     offset: int = Query(default=0, ge=0),
     actor_type: str | None = Query(default=None),
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("audit.view")),
 ) -> dict:
     """
     Return paginated audit log, newest first.
@@ -71,7 +71,7 @@ async def list_audit_log_by_action(
     limit: int = Query(default=50, le=200),
     offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("audit.view")),
 ) -> dict:
     """
     Return paginated audit log filtered by action type, newest first.

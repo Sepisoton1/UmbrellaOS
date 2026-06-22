@@ -72,7 +72,7 @@ async def test_moderator_role_cannot_change_settings(client, db_session):
         json={"value": "hacked"},
         headers=headers,
     )
-    assert response.status_code == 401
+    assert response.status_code == 403
 
 
 @pytest.mark.asyncio

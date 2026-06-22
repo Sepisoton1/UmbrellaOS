@@ -37,7 +37,7 @@ async def on_ready():
             await ch.send("🌙 **MOON Discord Bot** is online")
 
 
-for ext in ("cogs.chat_bridge", "cogs.events", "cogs.ai_alerts", "cogs.ai_config",
+for ext in ("cogs.chat_bridge", "cogs.events", "cogs.ai_alerts", "cogs.alt_alerts", "cogs.ai_config",
             "cogs.mc_commands", "cogs.announcements", "cogs.moderation", "cogs.ai_chat",
             "cogs.verification", "cogs.fun", "cogs.canned_responses"):
     try:

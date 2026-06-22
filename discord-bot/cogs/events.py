@@ -1,124 +1,100 @@
 """
 cogs/events.py — Discord bot events cog.
 
-Polls for Minecraft events and forwards them to Discord.
+Polls for Minecraft bridge messages and forwards chat + lifecycle events to Discord.
 """
-import asyncio
 import httpx
 import discord
 from discord.ext import commands, tasks
 from config import config
 
+EVENT_KEYWORDS = (
+    "joined the server",
+    "left the server",
+    "died",
+    "earned",
+    "achievement",
+    "server is online",
+    "server is shutting down",
+)
+
 
 class Events(commands.Cog):
-    """Events cog for polling and forwarding Minecraft events."""
-    
+    """Poll Minecraft bridge messages and forward to Discord."""
+
     def __init__(self, bot: discord.Bot):
         self.bot = bot
         self.bridge_channel_id = config.BRIDGE_CHANNEL_ID
         self.last_seen_id = 0
-        self.last_event_id = 0
-    
+
     @commands.Cog.listener()
     async def on_ready(self):
-        """Start background polling tasks when bot is ready."""
-        self.poll_messages.start()
-        self.poll_events.start()
-        print("[Events] Background polling tasks started")
-    
+        if not self.poll_bridge_messages.is_running():
+            self.poll_bridge_messages.start()
+        print("[Events] Bridge polling started")
+
     def cog_unload(self):
-        """Clean up background tasks when cog is unloaded."""
-        self.poll_messages.cancel()
-        self.poll_events.cancel()
-    
+        self.poll_bridge_messages.cancel()
+
+    def _is_lifecycle_event(self, message: str) -> bool:
+        lower = message.lower()
+        return any(keyword in lower for keyword in EVENT_KEYWORDS)
+
+    async def _format_event(self, player_name: str, message: str) -> str | None:
+        lower = message.lower()
+        if "joined the server" in lower:
+            return f"🟢 **{player_name}** joined the server"
+        if "left the server" in lower:
+            return f"🔴 **{player_name}** left the server"
+        if "died" in lower:
+            return f"💀 **{player_name}** died: {message}"
+        if "earned" in lower or "achievement" in lower:
+            return f"🏆 **{player_name}** earned: {message}"
+        if "server is online" in lower:
+            return "🟢 Server is online"
+        if "server is shutting down" in lower:
+            return "🔴 Server is shutting down"
+        return None
+
     @tasks.loop(seconds=5)
-    async def poll_messages(self):
-        """Poll for new Minecraft chat messages every 5 seconds."""
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(
-                    f"{config.UMBRELLA_API_URL}/api/v1/bridge/messages?source=minecraft&limit=20",
-                    headers={"X-Admin-Key": config.UMBRELLA_ADMIN_KEY},
-                    timeout=5.0
-                )
-                if response.status_code == 200:
-                    messages = response.json()
-                    # Process messages newer than last_seen_id
-                    for msg in messages:
-                        if msg["id"] > self.last_seen_id:
-                            self.last_seen_id = msg["id"]
-                            # Get player name from message or use UUID
-                            player_name = msg.get("player_name") or msg.get("player_uuid", "Unknown")
-                            # Send to Discord via chat bridge
-                            chat_bridge = self.bot.get_cog("ChatBridge")
-                            if chat_bridge:
-                                await chat_bridge.send_to_discord(
-                                    player_name,
-                                    msg["message"],
-                                    "minecraft"
-                                )
-        except Exception as e:
-            print(f"[Events] Error polling messages: {e}")
-    
-    @tasks.loop(seconds=10)
-    async def poll_events(self):
-        """Poll for Minecraft events every 10 seconds."""
+    async def poll_bridge_messages(self):
+        """Single poll loop for chat and lifecycle events."""
         try:
             async with httpx.AsyncClient() as client:
                 response = await client.get(
                     f"{config.UMBRELLA_API_URL}/api/v1/bridge/messages?source=minecraft&limit=50",
                     headers={"X-Admin-Key": config.UMBRELLA_ADMIN_KEY},
-                    timeout=5.0
+                    timeout=5.0,
                 )
-                if response.status_code == 200:
-                    messages = response.json()
-                    # Process messages newer than last_event_id
-                    for msg in messages:
-                        if msg["id"] > self.last_event_id:
-                            self.last_event_id = msg["id"]
-                            # Check if this is an event (could be indicated by message format or metadata)
-                            # For now, we'll parse event types from message content
-                            await self.handle_event_message(msg)
+                if response.status_code != 200:
+                    return
+
+                for msg in response.json():
+                    msg_id = msg.get("id", 0)
+                    if msg_id <= self.last_seen_id:
+                        continue
+                    self.last_seen_id = msg_id
+
+                    text = msg.get("message", "")
+                    player_name = msg.get("player_name") or msg.get("player_uuid", "Unknown")
+
+                    if self._is_lifecycle_event(text):
+                        formatted = await self._format_event(player_name, text)
+                        if formatted:
+                            channel = self.bot.get_channel(self.bridge_channel_id)
+                            if channel:
+                                await channel.send(formatted)
+                        continue
+
+                    chat_bridge = self.bot.get_cog("ChatBridge")
+                    if chat_bridge:
+                        await chat_bridge.send_to_discord(player_name, text, "minecraft")
         except Exception as e:
-            print(f"[Events] Error polling events: {e}")
-    
-    async def handle_event_message(self, msg: dict):
-        """Handle an event message from Minecraft."""
-        message = msg.get("message", "")
-        player_name = msg.get("player_name") or msg.get("player_uuid", "Unknown")
-        
-        # Parse event types from message content
-        event_emoji = ""
-        formatted_message = ""
-        
-        if "joined the server" in message.lower():
-            event_emoji = "🟢"
-            formatted_message = f"{event_emoji} **{player_name}** joined the server"
-        elif "left the server" in message.lower():
-            event_emoji = "🔴"
-            formatted_message = f"{event_emoji} **{player_name}** left the server"
-        elif "died" in message.lower():
-            event_emoji = "💀"
-            formatted_message = f"{event_emoji} **{player_name}** died: {message}"
-        elif "earned" in message.lower() or "achievement" in message.lower():
-            event_emoji = "🏆"
-            formatted_message = f"{event_emoji} **{player_name}** earned: {message}"
-        elif "server is online" in message.lower():
-            event_emoji = "🟢"
-            formatted_message = f"{event_emoji} Server is online"
-        elif "server is shutting down" in message.lower():
-            event_emoji = "🔴"
-            formatted_message = f"{event_emoji} Server is shutting down"
-        else:
-            # Not a recognized event, skip
-            return
-        
-        # Send to Discord
-        channel = self.bot.get_channel(self.bridge_channel_id)
-        if channel:
-            await channel.send(formatted_message)
-        else:
-            print(f"[Events] Could not find bridge channel")
+            print(f"[Events] Error polling bridge messages: {e}")
+
+    @poll_bridge_messages.before_loop
+    async def before_poll(self):
+        await self.bot.wait_until_ready()
 
 
 def setup(bot: discord.Bot):

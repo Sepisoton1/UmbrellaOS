@@ -36,6 +36,8 @@ async def get_setting(
     setting = await SettingsService.get_by_key(db, key, unmasked=unmasked)
     if setting is None:
         raise HTTPException(status_code=404, detail=f"Setting '{key}' not found")
+    if setting.get("sensitive"):
+        setting = {**setting, "value": "***"}
     return setting
 
 

@@ -28,6 +28,7 @@ from database import get_db
 from models import User, Session, DiscordOAuthPending
 from models.permissions import Role
 from api.middleware.auth import require_admin_key
+from api.dependencies.permissions import RoleChecker
 from services import discord_service
 from services.discord_service import DiscordOAuthError
 from services.settings_service import SettingsService
@@ -43,12 +44,44 @@ class UserSchema(BaseModel):
     username: str
     email: str | None
     role_id: str | None
+    role: str | None = None
+    permissions: list[str] = []
     is_active: bool
     created_at: datetime
     updated_at: datetime
 
     class Config:
         from_attributes = True
+
+
+async def _user_to_schema(user: User, db: AsyncSession) -> UserSchema:
+    """Build UserSchema with resolved role name and permission keys."""
+    role_name: str | None = None
+    permissions: list[str] = list(user.extra_permissions or [])
+    if user.role_id:
+        result = await db.execute(
+            select(Role)
+            .options(selectinload(Role.permissions))
+            .where(Role.id == user.role_id)
+        )
+        role = result.scalar_one_or_none()
+        if role:
+            role_name = role.name
+            permissions = sorted(
+                {p.permission_key for p in role.permissions} | set(user.extra_permissions or [])
+            )
+    return UserSchema(
+        id=user.id,
+        discord_id=user.discord_id,
+        username=user.username,
+        email=user.email,
+        role_id=user.role_id,
+        role=role_name,
+        permissions=permissions,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        updated_at=user.updated_at,
+    )
 
 
 class CreateUserRequest(BaseModel):
@@ -97,14 +130,14 @@ async def list_users(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(RoleChecker(["roles.manage", "players.view"], require_all=False)),
 ) -> list[UserSchema]:
     """List all staff users."""
     result = await db.execute(
         select(User).offset(skip).limit(limit)
     )
     users = result.scalars().all()
-    return [UserSchema.model_validate(u) for u in users]
+    return [await _user_to_schema(u, db) for u in users]
 
 
 @router.get("/users/{user_id}", response_model=UserSchema)
@@ -122,7 +155,7 @@ async def get_user(
     if user is None:
         raise HTTPException(status_code=404, detail=f"User '{user_id}' not found")
 
-    return UserSchema.model_validate(user)
+    return await _user_to_schema(user, db)
 
 
 @router.post("/users", response_model=UserSchema, status_code=201)
@@ -150,7 +183,7 @@ async def create_user(
     db.add(user)
     await db.flush()
 
-    return UserSchema.model_validate(user)
+    return await _user_to_schema(user, db)
 
 
 @router.patch("/users/{user_id}", response_model=UserSchema)
@@ -180,7 +213,7 @@ async def update_user(
 
     await db.flush()
 
-    return UserSchema.model_validate(user)
+    return await _user_to_schema(user, db)
 
 
 @router.delete("/users/{user_id}", status_code=204)
@@ -330,7 +363,7 @@ async def discord_callback(
 
     return DiscordOAuthCallbackResponse(
         token=session_token,
-        user=UserSchema.model_validate(user),
+        user=await _user_to_schema(user, db),
         expires_in=SESSION_EXPIRY_DAYS * 24 * 3600,
     )
 
@@ -379,4 +412,4 @@ async def get_current_user_endpoint(
     if session is None or not session.is_valid():
         raise HTTPException(status_code=401, detail="Invalid or expired session")
 
-    return UserSchema.model_validate(session.user)
+    return await _user_to_schema(session.user, db)

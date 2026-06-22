@@ -10,6 +10,7 @@ interface User {
   email?: string
   role?: string
   role_id?: string
+  permissions?: string[]
   is_active: boolean
 }
 

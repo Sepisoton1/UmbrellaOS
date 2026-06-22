@@ -25,9 +25,11 @@ export function AppSidebar() {
 
   // Hide menu items the current user's role isn't allowed to see.
   // Items with no `roles` set are visible to everyone.
-  const visibleItems = navItems.filter(
-    (item) => !item.roles || (user?.role && item.roles.includes(user.role))
-  )
+  const visibleItems = navItems.filter((item) => {
+    if (!item.roles) return true
+    if (!user?.role) return false
+    return item.roles.includes(user.role.toLowerCase())
+  })
 
   function isActive(href: string) {
     if (href === '/') return pathname === '/'

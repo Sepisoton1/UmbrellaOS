@@ -60,9 +60,16 @@ async def client(db_session, monkeypatch):
     Async HTTP test client with DB and settings overridden.
     Injects TEST_SECRET_KEY so auth works without a real .env.
     """
-    # Patch the secret key used by auth middleware
+    # Patch API keys used by auth middleware (admin + plugin share test value)
     import config.settings as cfg_module
-    monkeypatch.setattr(cfg_module.get_settings(), "secret_key", TEST_SECRET_KEY)
+    settings = cfg_module.get_settings()
+    monkeypatch.setattr(settings, "secret_key", TEST_SECRET_KEY)
+    monkeypatch.setattr(settings, "admin_key", TEST_SECRET_KEY)
+
+    import api.middleware.auth as auth_middleware
+    import api.middleware.session as session_middleware
+    monkeypatch.setattr(auth_middleware, "settings", settings)
+    monkeypatch.setattr(session_middleware, "settings", settings)
 
     # Override the DB dependency
     async def override_get_db():

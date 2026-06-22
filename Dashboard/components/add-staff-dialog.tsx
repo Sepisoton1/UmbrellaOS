@@ -27,7 +27,7 @@ export function AddStaffDialog() {
   const addStaff = useAddStaff()
 
   const nonStaffMembers = members?.filter((m) => !m.is_staff) ?? []
-  const availableRoles = roles?.filter((r) => r.name && ASSIGNABLE_ROLES.includes(r.name.toLowerCase())) ?? []
+  const availableRoles = roles?.filter((r) => r.role && ASSIGNABLE_ROLES.includes(r.role.toLowerCase())) ?? []
 
   function reset() {
     setDiscordId(''); setManualUsername(''); setSelectedMember(null); setSelectedUser(null); setRole('helper'); setTab('id')
@@ -118,7 +118,7 @@ export function AddStaffDialog() {
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
               {availableRoles.length > 0
-                ? availableRoles.map((r) => <SelectItem key={r.name} value={r.name.toLowerCase()}>{r.name}</SelectItem>)
+                ? availableRoles.map((r) => <SelectItem key={r.role} value={r.role.toLowerCase()}>{r.role}</SelectItem>)
                 : ASSIGNABLE_ROLES.map((r) => <SelectItem key={r} value={r} className="capitalize">{r.charAt(0).toUpperCase() + r.slice(1)}</SelectItem>)
               }
             </SelectContent>

@@ -14,6 +14,7 @@ from datetime import datetime
 from database import get_db
 from models import PlayerLanguage
 from api.middleware.auth import require_admin_key
+from api.dependencies.permissions import require_permission
 from services.translation_service import translate_message, set_player_language
 
 router = APIRouter(prefix="/api/v1/translation", tags=["translation"])
@@ -78,7 +79,7 @@ async def set_player_language_endpoint(
 @router.get("/language/all", response_model=list[PlayerLanguageResponse])
 async def get_all_player_languages(
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ) -> list[PlayerLanguageResponse]:
     """
     Get all player language preferences.
@@ -92,7 +93,7 @@ async def get_all_player_languages(
 async def get_player_language_endpoint(
     player_uuid: str,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ) -> PlayerLanguageResponse:
     """
     Get a player's language preference.

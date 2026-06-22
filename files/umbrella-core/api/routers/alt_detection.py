@@ -36,7 +36,8 @@ class AltCheckResponse(BaseModel):
 
 
 class FalsePositiveRequest(BaseModel):
-    event_id: int
+    event_id: int | None = None
+    player_uuid: str | None = None
     reviewed_by: str
 
 
@@ -236,9 +237,22 @@ async def mark_false_positive(
     _auth: str = Depends(require_permission("players.manage")),
 ):
     """Mark a suspicion event as false positive."""
-    result = await db.execute(
-        select(SuspicionEvent).where(SuspicionEvent.id == body.event_id)
-    )
+    if body.event_id is not None:
+        event_query = select(SuspicionEvent).where(SuspicionEvent.id == body.event_id)
+    elif body.player_uuid:
+        event_query = (
+            select(SuspicionEvent)
+            .where(
+                SuspicionEvent.player_uuid == body.player_uuid,
+                SuspicionEvent.false_positive.is_(False),
+            )
+            .order_by(SuspicionEvent.created_at.desc())
+            .limit(1)
+        )
+    else:
+        raise HTTPException(status_code=422, detail="event_id or player_uuid is required")
+
+    result = await db.execute(event_query)
     event = result.scalar_one_or_none()
     
     if not event:

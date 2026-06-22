@@ -15,6 +15,7 @@ from datetime import datetime
 
 from database import get_db
 from api.middleware.auth import require_admin_key
+from api.dependencies.permissions import require_permission, RoleChecker
 from services import snapshot_service
 
 router = APIRouter(prefix="/api/v1/snapshots", tags=["snapshots"])
@@ -117,7 +118,7 @@ async def list_player_snapshots(
     since: str | None = None,
     until: str | None = None,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ):
     """
     List snapshots for a player, newest first.
@@ -146,7 +147,7 @@ async def list_player_snapshots(
 async def get_latest_player_snapshot(
     minecraft_uuid: str,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ):
     """
     Get the most recent snapshot for a player.
@@ -162,7 +163,7 @@ async def get_latest_player_snapshot(
 async def get_snapshot(
     snapshot_id: str,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ):
     """
     Get a snapshot by ID.
@@ -179,7 +180,7 @@ async def get_snapshots_near_replay(
     replay_id: str,
     window_minutes: int = Query(10, ge=1, le=60),
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ):
     """
     Get snapshots for the player associated with a replay session,

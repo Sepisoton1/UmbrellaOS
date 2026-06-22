@@ -15,17 +15,22 @@ async def test_post_ai_config_request_creates_pending_action(
     client: AsyncClient, db_session
 ):
     """POST /ai/config/request creates a pending action."""
-    # Set API key
+    # Ensure OpenRouter API key is set for the test
     async with db_session() as db:
-        setting = Setting(
-            key="ai.openrouter_api_key",
-            value="test-api-key",
-            category="ai",
-            description="Test",
-            sensitive=False,
-            requires_restart=False,
-        )
-        db.add(setting)
+        from sqlalchemy import select
+        result = await db.execute(select(Setting).where(Setting.key == "ai.openrouter_key"))
+        setting = result.scalar_one_or_none()
+        if setting:
+            setting.value = "test-api-key"
+        else:
+            db.add(Setting(
+                key="ai.openrouter_key",
+                value="test-api-key",
+                category="ai",
+                description="Test",
+                sensitive=False,
+                requires_restart=False,
+            ))
         await db.commit()
     
     # Mock the OpenRouter API call at the httpx level

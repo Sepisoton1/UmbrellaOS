@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from database import get_db
 from api.middleware.auth import require_admin_key
+from api.dependencies.permissions import require_permission
 from services import analytics_service
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
@@ -64,7 +65,7 @@ async def get_analytics_events(
     event_type: str | None = None,
     minecraft_uuid: str | None = None,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ):
     """
     Get recent analytics events.
@@ -85,7 +86,7 @@ async def get_player_analytics(
     minecraft_uuid: str,
     period: str = Query("alltime"),
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ):
     """
     Get player statistics for a specific period.
@@ -107,7 +108,7 @@ async def get_player_analytics(
 @router.get("/summary")
 async def get_server_analytics_summary(
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ):
     """
     Get server-wide alltime totals for all metrics.

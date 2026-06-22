@@ -42,6 +42,8 @@ async def _load_role_permissions(
     )
     role = result.scalar_one_or_none()
     permissions = {p.permission_key for p in role.permissions} if role else set()
+    if user.extra_permissions:
+        permissions.update(user.extra_permissions)
     cache[user.role_id] = permissions
     return permissions
 

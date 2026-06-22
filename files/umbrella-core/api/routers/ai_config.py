@@ -11,7 +11,7 @@ from datetime import datetime
 
 from database import get_db
 from models import AIConfigAction
-from api.middleware.auth import require_admin_key
+from api.dependencies.permissions import require_permission
 from services.ai_config_service import process_ai_config_request, apply_config_action, AIConfigServiceError
 
 router = APIRouter(prefix="/api/v1/ai/config", tags=["ai-config"])
@@ -42,7 +42,7 @@ class AIConfigResponse(BaseModel):
 async def request_ai_config(
     body: AIConfigRequest,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("settings.manage")),
 ) -> AIConfigResponse:
     """
     Request AI-generated configuration.
@@ -64,7 +64,7 @@ async def request_ai_config(
 @router.get("/pending", response_model=list[AIConfigResponse])
 async def get_pending_configs(
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("settings.manage")),
 ) -> list[AIConfigResponse]:
     """
     Get all pending AI configuration actions.
@@ -81,7 +81,7 @@ async def get_pending_configs(
 async def approve_config(
     id: int,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("settings.manage")),
 ) -> AIConfigResponse:
     """
     Approve and apply an AI configuration action.
@@ -97,7 +97,7 @@ async def approve_config(
 async def reject_config(
     id: int,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("settings.manage")),
 ) -> AIConfigResponse:
     """
     Reject an AI configuration action.

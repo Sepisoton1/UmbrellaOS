@@ -15,6 +15,7 @@ from datetime import datetime
 
 from database import get_db
 from api.middleware.auth import require_admin_key
+from api.dependencies.permissions import require_permission
 from services import replay_service
 
 router = APIRouter(prefix="/api/v1/replay", tags=["replay"])
@@ -79,7 +80,7 @@ async def list_replay_sessions(
     limit: int = Query(50, ge=1, le=200),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ):
     """
     List replay sessions, newest first.
@@ -99,7 +100,7 @@ async def list_replay_sessions(
 async def get_replay_session(
     replay_id: str,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ):
     """
     Get a replay session by ID.
@@ -162,7 +163,7 @@ async def get_replay_session_events(
     limit: int = Query(1000, ge=1, le=5000),
     offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("players.view")),
 ):
     """
     Get events for a replay session, ordered by timestamp ASC.

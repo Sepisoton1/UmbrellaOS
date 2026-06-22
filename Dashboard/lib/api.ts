@@ -120,8 +120,8 @@ export const api = {
     request<FlaggedPlayer[]>(`/alts/flagged?skip=${skip}&limit=${limit}`),
   getPlayerSuspicion: (uuid: string) =>
     request<{ score: number; events: unknown[]; alt_groups: unknown[] }>(`/alts/player/${uuid}`),
-  markFalsePositive: (event_id: number, reviewed_by: string) =>
-    request('/alts/false-positive', { method: 'POST', body: JSON.stringify({ event_id, reviewed_by }) }),
+  markFalsePositive: (payload: { event_id?: number; player_uuid?: string; reviewed_by: string }) =>
+    request('/alts/false-positive', { method: 'POST', body: JSON.stringify(payload) }),
   createAltGroup: (player_uuids: string[], notes?: string, confirmed = false) =>
     request('/alts/group', { method: 'POST', body: JSON.stringify({ player_uuids, notes, confirmed }) }),
   getAltGroups: () => request<unknown[]>('/alts/groups'),
@@ -146,10 +146,12 @@ export const api = {
     return request<ReplaySession[]>(`/replay/sessions?${q}`)
   },
   getReplaySession: (id: string) => request<ReplaySession>(`/replay/sessions/${id}`),
-  getReplayEvents: (id: string, params?: { limit?: number; offset?: number }) => {
+  getReplayEvents: (id: string, params?: { limit?: number; offset?: number; event_type?: string; minecraft_uuid?: string }) => {
     const q = new URLSearchParams()
     if (params?.limit) q.set('limit', String(params.limit))
     if (params?.offset) q.set('offset', String(params.offset))
+    if (params?.event_type) q.set('event_type', params.event_type)
+    if (params?.minecraft_uuid) q.set('minecraft_uuid', params.minecraft_uuid)
     return request<ReplayEvent[]>(`/replay/sessions/${id}/events?${q}`)
   },
   finalizeReplaySession: (id: string) =>

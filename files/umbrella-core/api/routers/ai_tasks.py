@@ -16,6 +16,7 @@ from datetime import datetime
 
 from database import get_db
 from api.middleware.auth import require_admin_key
+from api.dependencies.permissions import require_permission
 from services import ai_service
 from models import AITask, AuditLog
 
@@ -105,7 +106,7 @@ async def list_ai_tasks(
     skip: int = Query(0, ge=0),
     limit: int = Query(50, ge=1, le=200),
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("punishments.view")),
 ):
     """
     List all AI tasks with filters: status, task_type.
@@ -146,7 +147,7 @@ async def list_ai_tasks(
 async def get_ai_task(
     task_id: int,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("punishments.view")),
 ):
     """
     Get single AI task with full evidence.
@@ -177,7 +178,7 @@ async def approve_ai_task(
     task_id: int,
     body: ApproveTaskRequest,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("punishments.create")),
 ):
     """
     Staff approves AI recommendation.
@@ -231,7 +232,7 @@ async def deny_ai_task(
     task_id: int,
     body: DenyTaskRequest,
     db: AsyncSession = Depends(get_db),
-    _auth: str = Depends(require_admin_key),
+    _auth=Depends(require_permission("punishments.create")),
 ):
     """
     Staff denies AI recommendation.

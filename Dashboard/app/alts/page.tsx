@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { useFlaggedPlayers, useAltGroups, useMarkFalsePositive } from '@/lib/queries'
+import { useAuth } from '@/components/auth-context'
 import { PageHeader } from '@/components/page-header'
 import { timeAgo } from '@/lib/format'
 import type { FlaggedPlayer } from '@/lib/types'
@@ -17,12 +18,16 @@ export default function AltsPage() {
   const { data: flaggedPlayers, isLoading: isLoadingFlagged } = useFlaggedPlayers()
   const { data: altGroups, isLoading: isLoadingGroups } = useAltGroups()
   const markFalsePositive = useMarkFalsePositive()
+  const { user } = useAuth()
 
-  const handleMarkFalsePositive = async (event_id: number) => {
+  const handleMarkFalsePositive = async (playerUuid: string) => {
     try {
-      await markFalsePositive.mutateAsync({ event_id, reviewed_by: 'Staff' })
+      await markFalsePositive.mutateAsync({
+        player_uuid: playerUuid,
+        reviewed_by: user?.username || 'Staff',
+      })
       toast.success('Marked as false positive')
-    } catch (error) {
+    } catch {
       toast.error('Failed to mark as false positive')
     }
   }
@@ -78,13 +83,13 @@ export default function AltsPage() {
                           <TableCell>{timeAgo(player.first_seen)}</TableCell>
                           <TableCell>
                             <div className="flex gap-2">
-                              <Button size="sm" variant="outline">
+                              <Button size="sm" variant="outline" asChild>
                                 <Link href={`/players/${player.uuid}`}>View Profile</Link>
                               </Button>
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => handleMarkFalsePositive(0)}
+                                onClick={() => handleMarkFalsePositive(player.uuid)}
                               >
                                 Mark False Positive
                               </Button>

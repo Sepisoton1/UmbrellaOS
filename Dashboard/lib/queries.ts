@@ -29,6 +29,8 @@ export function useCreatePunishment() {
       api.createPunishment(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['punishments'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['player-punishments'] })
     },
   })
 }
@@ -39,6 +41,8 @@ export function useRevokePunishment() {
     mutationFn: (id: string) => api.revokePunishment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['punishments'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      queryClient.invalidateQueries({ queryKey: ['player-punishments'] })
     },
   })
 }
@@ -57,6 +61,7 @@ export function useUpdateAppeal() {
     mutationFn: ({ id, status }: { id: string; status: string }) => api.updateAppeal(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['appeals'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
     },
   })
 }
@@ -173,10 +178,11 @@ export function usePlayerSuspicion(uuid: string) {
 export function useMarkFalsePositive() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: ({ event_id, reviewed_by }: { event_id: number; reviewed_by: string }) => 
-      api.markFalsePositive(event_id, reviewed_by),
+    mutationFn: (payload: { event_id?: number; player_uuid?: string; reviewed_by: string }) =>
+      api.markFalsePositive(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['player-suspicion'] })
+      queryClient.invalidateQueries({ queryKey: ['flagged-players'] })
     },
   })
 }

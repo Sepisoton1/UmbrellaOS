@@ -168,17 +168,34 @@ export function buildDashboard(
 
 export function mapHealth(h: Record<string, unknown>): SystemMetrics {
   const ok = h.status === 'ok'
+  const dbConnected = h.database === 'connected'
+  const latency = Number(h.latency_ms ?? 0)
   return {
-    coreStatus: ok ? 'online' : 'degraded',
-    database: h.database === 'connected' ? 'connected' : 'disconnected',
-    apiLatencyMs: 0, activeConnections: 0, requestsPerMinute: 0,
-    errorRate: ok ? 0 : 5, uptime: '—', version: String(h.version || '1.0.0'),
+    apiLatencyMs: latency,
+    memoryUsedPct: Number(h.memory_pct ?? 0),
+    cpuPct: Number(h.cpu_pct ?? 0),
+    diskPct: Number(h.disk_pct ?? 0),
+    connections: Number(h.connections ?? 0),
     components: [
-      { name: 'API', status: ok ? 'healthy' : 'degraded', latencyMs: 0 },
-      { name: 'Database', status: h.database === 'connected' ? 'healthy' : 'down', latencyMs: 0 },
+      {
+        id: 'api',
+        label: 'API',
+        status: ok ? 'healthy' : 'degraded',
+        detail: String(h.service || 'umbrella-core'),
+        latencyMs: latency,
+      },
+      {
+        id: 'database',
+        label: 'Database',
+        status: dbConnected ? 'healthy' : 'down',
+        detail: dbConnected ? 'Connected' : String(h.database || 'unreachable'),
+        latencyMs: 0,
+      },
     ],
-    latencyHistory: Array(20).fill(0),
-    cpuPercent: 0, memoryPercent: 0, diskPercent: 0,
+    latencyHistory: Array.from({ length: 20 }, (_, i) => ({
+      label: String(i),
+      value: latency,
+    })),
   }
 }
 
