@@ -292,3 +292,117 @@ async def revoke_verification(
         await db.flush()
     
     return {"success": True}
+
+
+class ManualLinkRequest(BaseModel):
+    discord_id: str
+    mc_username: str
+
+
+@router.post("/manual-link")
+async def manual_link(
+    body: ManualLinkRequest,
+    db: AsyncSession = Depends(get_db),
+    _auth: str = Depends(require_admin_key),
+):
+    """Manually link a Discord ID to a Minecraft username.
+    UUID is resolved on the player's next join via the plugin.
+    """
+    from models import Player
+    # Check if discord account already linked
+    existing = await db.scalar(
+        select(DiscordAccount).where(DiscordAccount.discord_id == body.discord_id)
+    )
+    if existing:
+        existing.verified = True
+        existing.discord_username = existing.discord_username or body.discord_id
+        # Store username so plugin can resolve UUID on join
+        existing.player_uuid = f"pending:{body.mc_username}"
+        existing.linked_at = datetime.utcnow()
+    else:
+        existing = DiscordAccount(
+            discord_id=body.discord_id,
+            player_uuid=f"pending:{body.mc_username}",
+            verified=True,
+            linked_at=datetime.utcnow(),
+            discord_username=body.discord_id,
+        )
+        db.add(existing)
+
+    audit = AuditLog(
+        actor="staff",
+        actor_type="staff",
+        action="verification.manual_link",
+        target=body.mc_username,
+        details_json=f'{{"discord_id": "{body.discord_id}"}}',
+    )
+    db.add(audit)
+    await db.flush()
+    return {"success": True, "message": f"Linked {body.discord_id} to {body.mc_username}. UUID resolved on next join."}
+
+
+@router.delete("/unlink/{discord_id}")
+async def unlink_account(
+    discord_id: str,
+    db: AsyncSession = Depends(get_db),
+    _auth: str = Depends(require_admin_key),
+):
+    """Remove the Discord<->Minecraft link for a Discord user."""
+    account = await db.scalar(
+        select(DiscordAccount).where(DiscordAccount.discord_id == discord_id)
+    )
+    if not account:
+        raise HTTPException(status_code=404, detail="No linked account found for that Discord ID")
+
+    account.verified = False
+    account.player_uuid = None
+    account.linked_at = None
+
+    audit = AuditLog(
+        actor="staff",
+        actor_type="staff",
+        action="verification.manual_unlink",
+        target=discord_id,
+        details_json="{}",
+    )
+    db.add(audit)
+    await db.flush()
+    return {"success": True}
+
+
+class ResolvePendingRequest(BaseModel):
+    uuid: str
+    username: str
+
+
+@router.post("/resolve-pending")
+async def resolve_pending(
+    body: ResolvePendingRequest,
+    db: AsyncSession = Depends(get_db),
+    _auth: str = Depends(require_admin_key),
+):
+    """Called by the plugin on every join. If a DiscordAccount is sitting at
+    player_uuid == 'pending:<username>' (case-insensitive) and this player's
+    username matches, swap the placeholder for their real UUID."""
+    from sqlalchemy import func as sqlfunc
+
+    pending_marker = f"pending:{body.username}"
+    account = await db.scalar(
+        select(DiscordAccount).where(
+            sqlfunc.lower(DiscordAccount.player_uuid) == sqlfunc.lower(pending_marker)
+        )
+    )
+    if not account:
+        return {"resolved": False}
+
+    account.player_uuid = body.uuid
+    audit = AuditLog(
+        actor="system",
+        actor_type="plugin",
+        action="verification.pending_resolved",
+        target=body.username,
+        details_json=f'{{"discord_id": "{account.discord_id}", "uuid": "{body.uuid}"}}',
+    )
+    db.add(audit)
+    await db.flush()
+    return {"resolved": True, "discord_id": account.discord_id}

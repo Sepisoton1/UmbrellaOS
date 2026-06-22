@@ -47,7 +47,7 @@ async def _ai_confidence_review(
         f"Check: {check_name}\nVerbose: {verbose}\nVL: {vl}\n"
         f"Prior punishments on record: {prior_punishments}\n\n"
         f"Rate the likelihood this is a REAL cheat (not a false positive) from 0.0 to 1.0.\n"
-        f"Reply ONLY with a JSON object: {{"confidence": <float>, "reason": "<one sentence>"}}"
+        f"Reply ONLY with a JSON object: {{\"confidence\": <float>, \"reason\": \"<one sentence>\"}}"
     )
     try:
         async with httpx.AsyncClient(timeout=8.0) as client:

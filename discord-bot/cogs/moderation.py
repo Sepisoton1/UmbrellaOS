@@ -324,3 +324,53 @@ class Moderation(commands.Cog):
 
 def setup(bot: discord.Bot):
     bot.add_cog(Moderation(bot))
+
+
+# ---------------------------------------------------------------------------
+# Manual verify / unlink — permission-gated, configurable per-user
+# ---------------------------------------------------------------------------
+
+MANUAL_VERIFY_ALLOWED: set[int] = set()  # Discord user IDs granted this command
+# Owner always has access regardless. Add IDs here or via /grant-verify below.
+
+
+def can_manual_verify(member: discord.Member) -> bool:
+    rank = get_member_rank(member)
+    return rank in ("owner",) or member.id in MANUAL_VERIFY_ALLOWED
+
+
+
+    # ── /grant-verify ───────────────────────────────────────────────────────
+    @commands.slash_command(name="grant-verify", description="Grant a user access to /manual-verify and /manual-unlink")
+    @option("discord_user", description="User to grant access to", type=discord.Member)
+    async def grant_verify(self, ctx: discord.ApplicationContext, discord_user: discord.Member):
+        if get_member_rank(ctx.author) != "owner":
+            await ctx.respond("❌ Owner only.", ephemeral=True)
+            return
+        MANUAL_VERIFY_ALLOWED.add(discord_user.id)
+        await ctx.respond(f"✅ **{discord_user.display_name}** can now use verification commands.", ephemeral=True)
+
+    # ── /revoke-verify ──────────────────────────────────────────────────────
+    @commands.slash_command(name="revoke-verify", description="Remove a user's access to /manual-verify")
+    @option("discord_user", description="User to revoke", type=discord.Member)
+    async def revoke_verify(self, ctx: discord.ApplicationContext, discord_user: discord.Member):
+        if get_member_rank(ctx.author) != "owner":
+            await ctx.respond("❌ Owner only.", ephemeral=True)
+            return
+        MANUAL_VERIFY_ALLOWED.discard(discord_user.id)
+        await ctx.respond(f"✅ Removed.", ephemeral=True)
+
+# Global set for track list overrides
+MANUAL_VERIFY_ALLOWED = set()
+
+def can_manual_verify(member: discord.Member) -> bool:
+    """Helper used by verification.py to check if a user is allowed to manually link profiles."""
+    if get_member_rank(member) == "owner" or member.id in MANUAL_VERIFY_ALLOWED:
+        return True
+    return can_use(member, "staff")
+
+def setup(bot: discord.Bot):
+    bot.add_cog(Moderation(bot))
+
+def setup(bot: discord.Bot):
+    bot.add_cog(Moderation(bot))

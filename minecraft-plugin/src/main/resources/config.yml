@@ -1,5 +1,5 @@
 umbrella:
-  core_url: "http://localhost:8765"
+  core_url: "https://accessed-medications-carried-tribe.trycloudflare.com"
   admin_key: "changeme"
   verify_on_join: true
   bridge_mode_cache_seconds: 30
