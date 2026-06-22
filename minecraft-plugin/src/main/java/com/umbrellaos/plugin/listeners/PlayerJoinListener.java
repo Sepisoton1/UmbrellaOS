@@ -62,8 +62,9 @@ public class PlayerJoinListener implements Listener {
                     }
                     event.disallow(AsyncPlayerPreLoginEvent.Result.KICK_OTHER,
                         "\u00a76\u00a7lVerification Required\n\n" +
-                        "\u00a7eSend this code to \u00a7bUmbrellaBot\u00a7e on Discord:\n\n" +
+                        "\u00a7eSend this code to \u00a7bMoonBot\u00a7e on Discord:\n\n" +
                         "\u00a7f\u00a7l" + code + "\n\n" +
+                        "\u00a77Join: \u00a7bdiscord.gg/p4w7um77JG\n" +
                         "\u00a77Rejoin after verifying.");
                     return;
                 }

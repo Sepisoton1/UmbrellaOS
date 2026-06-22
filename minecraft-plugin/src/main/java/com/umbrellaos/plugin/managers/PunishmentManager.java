@@ -78,6 +78,42 @@ public class PunishmentManager {
         return false;
     }
 
+    public String getMuteReason(UUID uuid) {
+        List<Map<String, Object>> punishments = punishmentCache.get(uuid);
+        if (punishments == null) {
+            return null;
+        }
+        for (Map<String, Object> punishment : punishments) {
+            String type = (String) punishment.get("type");
+            Boolean active = (Boolean) punishment.get("active");
+            if ("mute".equalsIgnoreCase(type) && Boolean.TRUE.equals(active) && !isExpired(punishment)) {
+                return (String) punishment.get("reason");
+            }
+        }
+        return null;
+    }
+
+    public OffsetDateTime getMuteExpiry(UUID uuid) {
+        List<Map<String, Object>> punishments = punishmentCache.get(uuid);
+        if (punishments == null) {
+            return null;
+        }
+        for (Map<String, Object> punishment : punishments) {
+            String type = (String) punishment.get("type");
+            Boolean active = (Boolean) punishment.get("active");
+            if ("mute".equalsIgnoreCase(type) && Boolean.TRUE.equals(active) && !isExpired(punishment)) {
+                Object expiresAt = punishment.get("expires_at");
+                if (expiresAt == null) return null;
+                try {
+                    return OffsetDateTime.parse(expiresAt.toString());
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+        }
+        return null;
+    }
+
     public String getBanReason(UUID uuid) {
         List<Map<String, Object>> punishments = punishmentCache.get(uuid);
         if (punishments == null) {

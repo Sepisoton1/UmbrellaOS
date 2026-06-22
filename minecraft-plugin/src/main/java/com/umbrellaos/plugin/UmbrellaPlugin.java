@@ -1,5 +1,7 @@
 package com.umbrellaos.plugin;
 
+import org.bukkit.Bukkit;
+
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.ProtocolManager;
 import com.umbrellaos.plugin.api.CoreApiClient;
@@ -61,7 +63,7 @@ public class UmbrellaPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerQuitListener(apiClient, verificationManager), this);
         getServer().getPluginManager().registerEvents(new PlayerDeathListener(apiClient, replayBufferTask), this);
         getServer().getPluginManager().registerEvents(new PlayerMoveListener(replayBufferTask), this);
-        getServer().getPluginManager().registerEvents(new PlayerChatListener(apiClient, verificationManager, bridgeManager), this);
+        getServer().getPluginManager().registerEvents(new PlayerChatListener(apiClient, verificationManager, bridgeManager, punishmentManager), this);
         getServer().getPluginManager().registerEvents(new PlayerAchievementListener(apiClient), this);
         GrimFlagListener.register(this, anticheatManager, punishmentManager);
 
@@ -98,6 +100,15 @@ public class UmbrellaPlugin extends JavaPlugin {
         snapshotTask.runTaskTimerAsynchronously(this, config.getSnapshotIntervalSeconds() * 20L, config.getSnapshotIntervalSeconds() * 20L);
         replayBufferTask.runTaskTimerAsynchronously(this, 20L, 20L); // Run every second
         commandPollingTask.runTaskTimerAsynchronously(this, 0L, 100L); // Run every 5 seconds (100 ticks)
+
+        // Refresh punishment cache for all online players every 30s, so a
+        // mute issued mid-session takes effect immediately instead of
+        // requiring the player to rejoin.
+        getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+            for (org.bukkit.entity.Player player : Bukkit.getOnlinePlayers()) {
+                punishmentManager.refresh(player.getUniqueId());
+            }
+        }, 600L, 600L);
 
         // Post server start event
         apiClient.postEvent("server_start", null, "Server started", null).thenRun(() -> {
