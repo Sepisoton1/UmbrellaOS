@@ -93,6 +93,33 @@ public class CoreApiClient {
         return future;
     }
 
+    private CompletableFuture<String> asyncDelete(String endpoint) {
+        CompletableFuture<String> future = new CompletableFuture<>();
+        Request request = buildRequest(endpoint).delete().build();
+
+        client.newCall(request).enqueue(new Callback() {
+            @Override
+            public void onFailure(Call call, IOException e) {
+                future.completeExceptionally(e);
+            }
+
+            @Override
+            public void onResponse(Call call, Response response) throws IOException {
+                try {
+                    if (!response.isSuccessful()) {
+                        future.completeExceptionally(new ApiException(response.code(), response.body().string()));
+                        return;
+                    }
+                    future.complete(response.body().string());
+                } finally {
+                    response.close();
+                }
+            }
+        });
+
+        return future;
+    }
+
     private String toJson(Object obj) {
         return gson.toJson(obj);
     }
@@ -147,6 +174,27 @@ public class CoreApiClient {
         body.addProperty("player_uuid", playerUuid);
         return asyncPost("/api/v1/verification/status", body)
             .thenApply(response -> parseJson(response, Map.class).get("verified").toString().equals("true"));
+    }
+
+    public CompletableFuture<Map<String, Object>> resolvePendingLink(String playerUuid, String username) {
+        JsonObject body = new JsonObject();
+        body.addProperty("uuid", playerUuid);
+        body.addProperty("username", username);
+        return asyncPost("/api/v1/verification/resolve-pending", body)
+                .thenApply(response -> parseJson(response, Map.class));
+    }
+
+    public CompletableFuture<Map<String, Object>> manualLink(String discordId, String mcUsername) {
+        JsonObject body = new JsonObject();
+        body.addProperty("discord_id", discordId);
+        body.addProperty("mc_username", mcUsername);
+        return asyncPost("/api/v1/verification/manual-link", body)
+                .thenApply(response -> parseJson(response, Map.class));
+    }
+
+    public CompletableFuture<Map<String, Object>> unlinkAccount(String discordId) {
+        return asyncDelete("/api/v1/verification/unlink/" + discordId)
+                .thenApply(response -> parseJson(response, Map.class));
     }
 
     public CompletableFuture<List<Map<String, Object>>> getPunishments(String playerUuid) {

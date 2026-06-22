@@ -21,3 +21,18 @@ commands:
     description: Internal GrimAC flag handler
     usage: /umbrellaflag <player> <check> <vl>
     permission: umbrella.internal
+  umbrellaverify:
+    description: Manually link a Discord ID to a Minecraft username
+    usage: /umbrellaverify <discordId> <mcUsername>
+    permission: umbrellaos.verify
+  umbrellaunlink:
+    description: Remove a Discord-Minecraft account link
+    usage: /umbrellaunlink <discordId>
+    permission: umbrellaos.verify
+permissions:
+  umbrellaos.verify:
+    description: Manual Discord-Minecraft linking/unlinking
+    default: op
+  umbrellaos.staff:
+    description: Receive anti-cheat staff alerts in-game
+    default: op

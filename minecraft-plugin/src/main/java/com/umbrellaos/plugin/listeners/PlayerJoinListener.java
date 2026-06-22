@@ -92,6 +92,13 @@ public class PlayerJoinListener implements Listener {
             return null;
         });
 
+        // If staff manually linked this player's Discord by username before
+        // they ever joined, finalize the link with their real UUID now.
+        apiClient.resolvePendingLink(uuid, username).exceptionally(e -> {
+            e.printStackTrace();
+            return null;
+        });
+
         Bukkit.getScheduler().runTaskAsynchronously(umbrellaPlugin, () -> {
             apiClient.checkAltDetection(uuid, ipAddress, username).exceptionally(e -> {
                 e.printStackTrace();

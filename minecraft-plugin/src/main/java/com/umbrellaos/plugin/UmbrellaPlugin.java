@@ -9,6 +9,7 @@ import com.umbrellaos.plugin.commands.DiscCommand;
 import com.umbrellaos.plugin.commands.UmbrellaFlagCommand;
 import com.umbrellaos.plugin.commands.VerifyCommand;
 import com.umbrellaos.plugin.commands.LangCommand;
+import com.umbrellaos.plugin.commands.UmbrellaVerifyCommand;
 import com.umbrellaos.plugin.config.PluginConfig;
 import com.umbrellaos.plugin.listeners.*;
 import com.umbrellaos.plugin.managers.AnticheatManager;
@@ -94,6 +95,9 @@ public class UmbrellaPlugin extends JavaPlugin {
         getCommand("disc").setExecutor(new DiscCommand(apiClient, bridgeManager));
         getCommand("lang").setExecutor(new LangCommand(apiClient, this));
         getCommand("translate").setExecutor(new LangCommand(apiClient, this));
+        UmbrellaVerifyCommand verifyLinkCommand = new UmbrellaVerifyCommand(apiClient, this);
+        getCommand("umbrellaverify").setExecutor(verifyLinkCommand);
+        getCommand("umbrellaunlink").setExecutor(verifyLinkCommand);
 
         // Start scheduled tasks
         heartbeatTask.runTaskTimerAsynchronously(this, config.getHeartbeatIntervalSeconds() * 20L, config.getHeartbeatIntervalSeconds() * 20L);
