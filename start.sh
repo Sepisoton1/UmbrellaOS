@@ -2,6 +2,7 @@
 echo "Starting UmbrellaOS..."
 
 echo "Cleaning up project ports..."
+
 # Target ONLY the specific ports your backend and frontend use
 kill -9 $(lsof -t -i:8765) 2>/dev/null
 kill -9 $(lsof -t -i:3000) 2>/dev/null
@@ -34,18 +35,11 @@ if [ $? -ne 0 ]; then
     echo "WARNING: failed to set port visibility — set manually in Ports tab."
 fi
 
+pkill -f "python main.py" 2>/dev/null
 # 4. Start the Discord Bot
 cd /workspaces/UmbrellaOS/discord-bot
 PYTHONUNBUFFERED=1 python main.py > /tmp/bot.log 2>&1 &
 echo "Waiting for bot..."
 sleep 3
 tail -5 /tmp/bot.log
-
-echo "All services started safely!"
-cd /workspaces/UmbrellaOS/discord-bot
-PYTHONUNBUFFERED=1 python main.py > /tmp/bot.log 2>&1 &
-echo "Waiting for bot..."
-sleep 3
-tail -5 /tmp/bot.log
-
 echo "All services started safely!"
